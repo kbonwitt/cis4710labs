@@ -1,7 +1,7 @@
 # source verilog files
 SYNTH_SOURCES=march.v
 TOP_SYNTH_MODULE=march
-
+#test
 # testbench files
 TESTBENCH=$(SYNTH_SOURCES)
 TOP_TESTBENCH_MODULE=test_march

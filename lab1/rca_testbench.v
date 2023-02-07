@@ -5,7 +5,7 @@
 `timescale 1ns / 1ps
 
 // change this to adjust how many errors are printed out
-`define MAX_ERRORS_TO_DISPLAY 15
+`define MAX_ERRORS_TO_DISPLAY 5
 
 // set this to 1 to create a waveform file for easier debugging
 `define GENERATE_VCD 1
