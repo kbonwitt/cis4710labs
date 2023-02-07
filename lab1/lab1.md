@@ -1,3 +1,5 @@
+TEST - Charlie
+
 # Lab 1: Verilog Debugging
 
 This lab will introduce you to the process of building, testing and debugging
