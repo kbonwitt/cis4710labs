@@ -84,15 +84,32 @@ module lc4_alu(input  wire [15:0] i_insn,
 
 
 
-      wire [15:0] mul_op, [15:0] div_op, [15:0] mod_op;
-      assign mul_op = r1data[15:0] * r2data[15:0];
+      //MUL, DIV, MOD
+      wire [15:0] mul_op = r1data * r2data;
+      wire [15:0] div_op, [15:0] mod_op;
       lc4_divider d0 (.i_dividend(r1data), .i_divisor(r2data),
             .o_remainder(mod_op), .o_quotient(div_op));
-      wire muldivmod[15:0] = MUL ? mul_op :
+      
+      wire [15:0] muldivmod = MUL ? mul_op :
                               DIV ? div_op :
                               MOD ? mod_op :
                               16'b0;
 
+      
+      //logical operators
+      wire [15:0] and_op = r1data & r2data;
+      wire [15:0] or_op = r1data | r2data;
+      wire [15:0] not_op = !r1data[15:0];
+      wire [15:0] xor_op = r1data[15:0] ^ r2data[15:0]; 
+      wire [15:0] andimm_op = r1data & ({{16{IMM5[4]}}, IMM5});
+            //note: i *think* this is how you sign extend...
+
+      wire [15:0] logicals = AND ? and_op :
+                              OR ? or_op :
+                              NOT ? not_op :
+                              XOR ? xor_op :
+                              ANDIMM ? andimm_op :
+                              16'b0;
 
 
       
