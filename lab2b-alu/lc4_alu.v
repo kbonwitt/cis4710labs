@@ -83,9 +83,15 @@ module lc4_alu(input  wire [15:0] i_insn,
       /*** END DECODER ***/
 
 
+      //insns that use the CLA: add, sub, addimm, ldr, str, jmp, branches, nop
+
+
+
 
       //MUL, DIV, MOD
-      wire [15:0] mul_op = r1data * r2data;
+      //TODO: figure out if r1data and r2data are signed or unsigned
+      // and if the * operator cares
+      wire signed [15:0] mul_op = r1data * r2data;
       wire [15:0] div_op, [15:0] mod_op;
       lc4_divider d0 (.i_dividend(r1data), .i_divisor(r2data),
             .o_remainder(mod_op), .o_quotient(div_op));
@@ -112,8 +118,36 @@ module lc4_alu(input  wire [15:0] i_insn,
                               16'b0;
 
 
-      
-      
+      //shifts
+      wire [16:0] sll_op = r1data << r2data;
+      wire [16:0] srl_op = r1data >> r2data;
+      wire [16:0] sra_op = r1data >>> r2data;
+
+      wire [15:0] shifts = SLL ? sll_op :
+                              SRL ? srl_op :
+                              SRA ? sra_op :
+                              16'b0;
+
+
+      //comparisons
+
+
+
+      //trap, jsr, jsrr
+
+
+      //const, hiconst
+
+
+
+      //final MUX:
+            //cla = (AND || SUB || ADDIMM || LDR || STR || JMP || BRANCH || NOP)
+            //muldivmod = (MUL || DIV || MOD)
+            //logicals = (AND || OR || NOT || XOR || ANDIMM)
+            //compares = (CMP || CMPI || CMPU || CMPIU)
+            //shifts = (SLL || SRL || SRA)
+            //trapjsrjsrr = (TRAP || JSR || JSRR)
+            //hi_const = (CONST || HICONST)
 
 
       /*** YOUR CODE HERE ***/
