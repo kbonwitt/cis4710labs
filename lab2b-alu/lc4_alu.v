@@ -84,7 +84,19 @@ module lc4_alu(input  wire [15:0] i_insn,
 
 
       //insns that use the CLA: add, sub, addimm, ldr, str, jmp, branches, nop
+      wire [15:0] cla_num1 = (JMP || BRANCH || NOP) ? i_pc :
+                              r1data;
+      wire [15:0] cla_num1 = ADD ? r2data :
+                              SUB ? !r2data :
+                              ADIMM ? ({{16{IMM5[4]}}, IMM5}) :
+                              (LDR || STR) ? ({{16{IMM6[5]}}, IMM6}) :
+                              (BRANCH && !NOP) ? ({{16{IMM9[8]}}, IMM9}) :
+                              JMP ? ({{16{IMM11[10]}}, IMM11}) :
+                              16'b0; //we WANT it to be 0 if it's a NOP
+      wire cla_cin = (SUB || BRANCH || NOP);
 
+      wire [15:0] cla_sum;
+      cla16 c0 (.a(cla_num1), .b(cla_num2), .cin(cla_cin), .sum(cla_sum));
 
 
 
@@ -141,13 +153,13 @@ module lc4_alu(input  wire [15:0] i_insn,
 
 
       //final MUX:
-            //cla = (AND || SUB || ADDIMM || LDR || STR || JMP || BRANCH || NOP)
+            //cla_sum = (AND || SUB || ADDIMM || LDR || STR || JMP || BRANCH || NOP)
             //muldivmod = (MUL || DIV || MOD)
             //logicals = (AND || OR || NOT || XOR || ANDIMM)
             //compares = (CMP || CMPI || CMPU || CMPIU)
             //shifts = (SLL || SRL || SRA)
             //trapjsrjsrr = (TRAP || JSR || JSRR)
-            //hi_const = (CONST || HICONST)
+            //constants = (CONST || HICONST)
 
 
       /*** YOUR CODE HERE ***/
