@@ -26,10 +26,10 @@ module lc4_alu(input  wire [15:0] i_insn,
       assign ADDIMM = (opcode == 4'b1 && midbits[2] == 1'b1); //for ADDIMM, just the most significant midbit must be 1
 
       wire CMP, CMPU, CMPI, CMPIU;
-      assign CMP = (opcode == 4'b10 && midbits[2:1] == 2'b0);
-      assign CMPU = (opcode == 4'b10 && midbits[2:1] == 2'b1);
-      assign CMPI = (opcode == 4'b10 && midbits[2:1] == 2'b10);
-      assign CMPIU = (opcode == 4'b10 && midbits[2:1] == 2'b11);
+      assign CMP = (opcode == 4'b10 && i_insn[8:7] == 2'b0);
+      assign CMPU = (opcode == 4'b10 && i_insn[8:7] == 2'b1);
+      assign CMPI = (opcode == 4'b10 && i_insn[8:7] == 2'b10);
+      assign CMPIU = (opcode == 4'b10 && i_insn[8:7] == 2'b11);
 
       wire JSRR, JSR;
       assign CMP = (i_insn[15:11] == 5'b01000);
@@ -64,7 +64,36 @@ module lc4_alu(input  wire [15:0] i_insn,
       wire TRAP;
       assign TRAP = (opcode == 4'b1111);
 
-      
+            //Is it necessary to state that these are signed?
+      wire signed [4:0] IMM5, signed [5:0] IMM6, signed [6:0] IMM7, 
+            signed [7:0] IMM8, signed [8:0] IMM9, signed [10:0] IMM11;
+      assign IMM5 = i_insn[4:0];
+      assign IMM6 = i_insn[5:0];
+      assign IMM7 = i_insn[6:0];
+      assign IMM8 = i_insn[7:0];
+      assign IMM9 = i_insn[8:0];
+      assign IMM11 = i_insn[10:0];
+
+            //is there a way to indicate that these are UNsigned?
+      wire [3:0] UIMM4, [6:0] UIMM7, [7:0] UIMM8
+      assign UIMM4 = i_insn[3:0]
+      assign UIMM7 = i_insn[6:0]
+      assign UIMM8 = i_insn[7:0]
+
+      /*** END DECODER ***/
+
+
+
+      wire [15:0] mul_op, [15:0] div_op, [15:0] mod_op;
+      assign mul_op = r1data[15:0] * r2data[15:0];
+      lc4_divider d0 (.i_dividend(r1data), .i_divisor(r2data),
+            .o_remainder(mod_op), .o_quotient(div_op));
+      wire muldivmod[15:0] = MUL ? mul_op :
+                              DIV ? div_op :
+                              MOD ? mod_op :
+                              16'b0;
+
+
 
       
       
