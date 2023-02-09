@@ -13,10 +13,8 @@ module lc4_alu(input  wire [15:0] i_insn,
       assign opcode = i_insn[15:12];
       assign midbits = i_insn[5:3]; //these 'midbits' are helpful to distinguish between ADD/SUB/etc and AND/OR/etc
 
-      wire BRANCH, NOP; //in this case, i'm considering Branches and NOP to be differnet, since there's a difference in ALU stuff
-      assign NOP = (i_insn[15:9] == 7'b0); 
-      assign BRANCH = (opcode == 4'b0 && !NOP); 
-            //It will be a branch if the first 4 are 0 and it's not a NOP
+      wire BRANCH; 
+      assign BRANCH = (opcode == 4'b0); 
       
       wire ADD, SUB, MUL, DIV, ADDIMM;
       assign ADD = (opcode == 4'b1 && midbits == 3'b0);
@@ -75,7 +73,7 @@ module lc4_alu(input  wire [15:0] i_insn,
       assign IMM11 = i_insn[10:0];
 
             //is there a way to indicate that these are UNsigned?
-      wire [3:0] UIMM4, [6:0] UIMM7, [7:0] UIMM8
+      wire unsigned [3:0] UIMM4, unsigned [6:0] UIMM7, unsigned [7:0] UIMM8
       assign UIMM4 = i_insn[3:0]
       assign UIMM7 = i_insn[6:0]
       assign UIMM8 = i_insn[7:0]
@@ -83,17 +81,17 @@ module lc4_alu(input  wire [15:0] i_insn,
       /*** END DECODER ***/
 
 
-      //insns that use the CLA: add, sub, addimm, ldr, str, jmp, branches, nop
-      wire [15:0] cla_num1 = (JMP || BRANCH || NOP) ? i_pc :
+      //insns that use the CLA: add, sub, addimm, ldr, str, jmp, branches
+      wire [15:0] cla_num1 = (JMP || BRANCH) ? i_pc :
                               r1data;
-      wire [15:0] cla_num1 = ADD ? r2data :
+      wire [15:0] cla_num2 = ADD ? r2data :
                               SUB ? !r2data :
-                              ADIMM ? ({{16{IMM5[4]}}, IMM5}) :
-                              (LDR || STR) ? ({{16{IMM6[5]}}, IMM6}) :
-                              (BRANCH && !NOP) ? ({{16{IMM9[8]}}, IMM9}) :
-                              JMP ? ({{16{IMM11[10]}}, IMM11}) :
-                              16'b0; //we WANT it to be 0 if it's a NOP
-      wire cla_cin = (SUB || BRANCH || NOP);
+                              ADIMM ? ({{11{IMM5[4]}}, IMM5}) :
+                              (LDR || STR) ? ({{10{IMM6[5]}}, IMM6}) :
+                              BRANCH ? ({{7{IMM9[8]}}, IMM9}) :
+                              JMP ? ({{5{IMM11[10]}}, IMM11}) :
+                              16'b0; 
+      wire cla_cin = (SUB || BRANCH);
 
       wire [15:0] cla_sum;
       cla16 c0 (.a(cla_num1), .b(cla_num2), .cin(cla_cin), .sum(cla_sum));
@@ -119,7 +117,7 @@ module lc4_alu(input  wire [15:0] i_insn,
       wire [15:0] or_op = r1data | r2data;
       wire [15:0] not_op = !r1data[15:0];
       wire [15:0] xor_op = r1data[15:0] ^ r2data[15:0]; 
-      wire [15:0] andimm_op = r1data & ({{16{IMM5[4]}}, IMM5});
+      wire [15:0] andimm_op = r1data & ({{11{IMM5[4]}}, IMM5});
             //note: i *think* this is how you sign extend...
 
       wire [15:0] logicals = AND ? and_op :
@@ -142,7 +140,18 @@ module lc4_alu(input  wire [15:0] i_insn,
 
 
       //comparisons
-
+      wire [15:0] cmp_num1, [15:0] cmp_num2;
+      assign cmp_num1 = (CMPU || CMPIU) ? unsigned r1data :
+                                          r1data;
+      
+      assign cmp_num2 = CMP ? r2data :
+                        CMPU ? unsigned r2data :
+                        CMPI ? ({{9{IMM7[6]}}, IMM7}) :
+                        unsigned ({{9{IMM7[6]}}, IMM7}); 
+      
+      wire [15:0] comparisons = cmp_num1 > cmp_num2 ? 16'b1 :
+                                    cmp_num1 == cmp_num2 ? 16'b0 :
+                                    16'hFFFF;
 
 
       //trap, jsr, jsrr
@@ -153,7 +162,7 @@ module lc4_alu(input  wire [15:0] i_insn,
 
 
       //final MUX:
-            //cla_sum = (AND || SUB || ADDIMM || LDR || STR || JMP || BRANCH || NOP)
+            //cla_sum = (AND || SUB || ADDIMM || LDR || STR || JMP || BRANCH)
             //muldivmod = (MUL || DIV || MOD)
             //logicals = (AND || OR || NOT || XOR || ANDIMM)
             //compares = (CMP || CMPI || CMPU || CMPIU)
