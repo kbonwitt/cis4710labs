@@ -22,7 +22,7 @@ module lc4_alu(input  wire [15:0] i_insn,
       assign MUL = (opcode == 4'b1 && midbits == 3'b1);
       assign SUB = (opcode == 4'b1 && midbits == 3'b10);
       assign DIV = (opcode == 4'b1 && midbits == 3'b11);
-      assign ADDIMM = (opcode == 4'b1 && midbits[2] == 1'b1); //for ADDIMM, just the most significant midbit must be 1
+      assign ADDIMM = (opcode == 4'b1 && i_insn[5] == 1'b1); //for ADDIMM, just the most significant midbit must be 1
 
       wire CMP, CMPU, CMPI, CMPIU;
       assign CMP = (opcode == 4'b10 && i_insn[8:7] == 2'b0);
@@ -91,7 +91,7 @@ module lc4_alu(input  wire [15:0] i_insn,
       //insns that use the CLA: add, sub, addimm, ldr, str, jmp, branches
       wire [15:0] cla_num1 = (JMP || BRANCH) ? i_pc : i_r1data;
       wire [15:0] cla_num2 = ADD ? i_r2data :
-                              SUB ? !i_r2data :
+                              SUB ? ~(i_r2data) :
                               ADDIMM ? ({{11{IMM5[4]}}, IMM5}) :
                               (LDR || STR) ? ({{10{IMM6[5]}}, IMM6}) :
                               BRANCH ? ({{7{IMM9[8]}}, IMM9}) :
@@ -143,11 +143,14 @@ module lc4_alu(input  wire [15:0] i_insn,
 
       //comparisons
       wire [15:0] cmp_num1, cmp_num2;
-      assign cmp_num1 = (CMPU || CMPIU) ? i_r1data :
-                                          i_r1data;
-      assign cmp_num2 = CMP ? i_r2data :
-                        CMPU ? i_r2data :
-                        CMPI ? ({{9{IMM7[6]}}, IMM7}) :
+      wire unsigned r1_unsigned = i_r1data;
+      wire signed r1_signed = i_r1data;
+      wire unsigned r2_unsigned = i_r2data;
+      wire signed r2_signed = i_r2data;
+      assign cmp_num1 = (CMP || CMPI) ? r1_signed :
+                                          r1_unsigned;
+      assign cmp_num2 = CMP ? r2_signed :
+                        CMPU ? r2_unsigned :
                         ({{9{IMM7[6]}}, IMM7}); 
       wire [15:0] comparisons = cmp_num1 > cmp_num2 ? 16'b1 :
                                     cmp_num1 == cmp_num2 ? 16'b0 :
@@ -174,7 +177,7 @@ module lc4_alu(input  wire [15:0] i_insn,
             //shifts = (SLL || SRL || SRA)
             //trapjsrjsrr = (TRAP || JSR || JSRR)
             //constants = (CONST || HICONST)
-      assign o_result = (AND || SUB || ANDIMM || LDR || STR || JMP || BRANCH) ? cla_sum :
+      assign o_result = (ADD || SUB || ADDIMM || LDR || STR || JMP || BRANCH) ? cla_sum :
                         (MUL || DIV || MOD) ? muldivmod :
                         (AND || OR || NOT || XOR || ANDIMM) ? logicals :
                         (CMP || CMPI || CMPU || CMPIU) ? comparisons :
