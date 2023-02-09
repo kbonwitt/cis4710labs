@@ -71,9 +71,6 @@ Warning: Wire lc4_alu.\JSRR is used but has no driver.
 Found and reported 6 problems.
 
 5. Executing HIERARCHY pass (managing design hierarchy).
-Warning: Resizing cell port cla16.gp4.cin from 3 bits to 1 bits.
-Warning: Resizing cell port cla16.gp3.cin from 3 bits to 1 bits.
-Warning: Resizing cell port cla16.gp2.cin from 3 bits to 1 bits.
 
 6. Executing FLATTEN pass (flatten design).
 <suppressed ~38 debug messages>

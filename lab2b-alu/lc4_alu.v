@@ -39,7 +39,7 @@ module lc4_alu(input  wire [15:0] i_insn,
       assign NOT = (opcode == 4'b101 && midbits == 3'b1);
       assign OR = (opcode == 4'b101 && midbits == 3'b10);
       assign XOR = (opcode == 4'b101 && midbits == 3'b11);
-      assign ANDIMM = (opcode == 4'b1011 && midbits[2] == 1'b1); //for ANDIMM, just the most significant midbit must be 1
+      assign ANDIMM = (opcode == 4'b101 && midbits[2] == 1'b1); //for ANDIMM, just the most significant midbit must be 1
 
       wire LDR, STR;
       assign LDR = (opcode == 4'b0110);
@@ -91,7 +91,7 @@ module lc4_alu(input  wire [15:0] i_insn,
       //insns that use the CLA: add, sub, addimm, ldr, str, jmp, branches
       wire [15:0] cla_num1 = (JMP || BRANCH) ? i_pc : i_r1data;
       wire [15:0] cla_num2 = ADD ? i_r2data :
-                              SUB ? !i_r2data :
+                              SUB ? ~i_r2data :
                               ADDIMM ? ({{11{IMM5[4]}}, IMM5}) :
                               (LDR || STR) ? ({{10{IMM6[5]}}, IMM6}) :
                               BRANCH ? ({{7{IMM9[8]}}, IMM9}) :
@@ -119,7 +119,7 @@ module lc4_alu(input  wire [15:0] i_insn,
       //logical operators
       wire [15:0] and_op = i_r1data & i_r2data;
       wire [15:0] or_op = i_r1data | i_r2data;
-      wire [15:0] not_op = !i_r1data;
+      wire [15:0] not_op = ~i_r1data;
       wire [15:0] xor_op = i_r1data ^ i_r2data; 
       wire [15:0] andimm_op = i_r1data & {{11{IMM5[4]}}, IMM5};
             //note: i *think* this is how you sign extend...
@@ -132,30 +132,34 @@ module lc4_alu(input  wire [15:0] i_insn,
 
 
       //shifts
-      wire [16:0] sll_op = i_r1data << i_r2data;
-      wire [16:0] srl_op = i_r1data >> i_r2data;
-      wire [16:0] sra_op = i_r1data >>> i_r2data;
+      wire [16:0] sll_op = i_r1data << UIMM4;
+      wire [16:0] srl_op = i_r1data >> UIMM4;
+      wire [16:0] sra_op = i_r1data >>> UIMM4;
       wire [15:0] shifts = SLL ? sll_op :
-                              SRL ? srl_op :
-                              SRA ? sra_op :
-                              16'b0;
+                        SRL ? srl_op :
+                        SRA ? sra_op :
+                        16'b0;
 
 
       //comparisons
       wire [15:0] cmp_num1, cmp_num2;
       assign cmp_num1 = (CMPU || CMPIU) ? i_r1data :
                                           i_r1data;
-      assign cmp_num2 = CMP ? i_r2data :
+      assign cmp_num2 = CMP ? $signed(i_r2data) :
                         CMPU ? i_r2data :
                         CMPI ? ({{9{IMM7[6]}}, IMM7}) :
-                        ({{9{IMM7[6]}}, IMM7}); 
-      wire [15:0] comparisons = cmp_num1 > cmp_num2 ? 16'b1 :
-                                    cmp_num1 == cmp_num2 ? 16'b0 :
-                                    16'hFFFF;
+                        ({9'b0, IMM7}); 
+      wire [15:0] comparisons = (cmp_num1 == cmp_num2) ? 16'b0 :
+            ((CMPU | CMPIU) & (cmp_num1 > cmp_num2)) ? 16'b1 :
+            ((CMPU | CMPIU) & (cmp_num1 < cmp_num2)) ? 16'hFFFF :
+            (cmp_num1[15] & !cmp_num2[15]) ? 16'hFFFF :
+            (!cmp_num1[15] & cmp_num2[15]) ? 16'b1 :
+            (cmp_num1 > cmp_num2) ? 16'b1 : 
+            16'hFFFF;
 
 
       //trap, jsr, jsrr      
-      wire [15:0] trapjsrjsrr = TRAP ? (UIMM8 | 16'h8000) :
+      wire [15:0] trapjsrjsrrrti = TRAP ? (UIMM8 | 16'h8000) :
                                     JSR ? (16'h8000 & i_pc) | (IMM11 << 4) :
                                     i_r1data;
 
@@ -174,12 +178,12 @@ module lc4_alu(input  wire [15:0] i_insn,
             //shifts = (SLL || SRL || SRA)
             //trapjsrjsrr = (TRAP || JSR || JSRR)
             //constants = (CONST || HICONST)
-      assign o_result = (AND || SUB || ANDIMM || LDR || STR || JMP || BRANCH) ? cla_sum :
+      assign o_result = (AND || OR || NOT || XOR || ANDIMM) ? logicals :
+                        (ADD || SUB || ADDIMM || LDR || STR || JMP || BRANCH) ? cla_sum :
                         (MUL || DIV || MOD) ? muldivmod :
-                        (AND || OR || NOT || XOR || ANDIMM) ? logicals :
                         (CMP || CMPI || CMPU || CMPIU) ? comparisons :
                         (SLL || SRL || SRA) ? shifts :
-                        (TRAP || JSR || JSRR) ? trapjsrjsrr :
+                        (TRAP || JSR || JSRR || RTI) ? trapjsrjsrrrti :
                         (CONST || HICONST) ? constants :
                         16'b0;
 
