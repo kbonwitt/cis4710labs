@@ -29,7 +29,7 @@ module gp4(input wire [3:0] gin, pin,
            output wire gout, pout,
            output wire [2:0] cout);
 
-   assign cout[0] = gin[0] | (cin & pin[0])       
+   assign cout[0] = gin[0] | (cin & pin[0]);    
    assign cout[1] = gin[1] | (pin[1] & gin[0]) | (cin & pin[1] & pin[0]);
    assign cout[2] = gin[2] | (pin[2] & gin[1]) | (pin[2] & pin[1] & gin[0]) | (pin[2] & pin[1] & pin[0] & cin);
    //assign cout[2] = gin[3] | (pin[3] & gin[2]) | (pin[3] & pin[2] & gin[1]) | (pin[3] & pin[2] & pin[1] & gin[0]) | (pin[3] & pin[2] & pin[1] & pin[0] & cin);
@@ -77,16 +77,16 @@ module cla16
    wire [2:0] cout1, cout2, cout3, cout4;
    wire pout1, pout2, pout3, pout4;
    wire gout1, gout2, gout3, gout4;
-   gp4 gp1(.gin(gin1), .pin(pin1), .cin(cin), .gout(gout1), .pout(pout1), .cout(cout1));
-   gp4 gp2(.gin(gin2), .pin(pin2), .cin(cout1), .gout(gout2), .pout(pout2), .cout(cout2));
-   gp4 gp3(.gin(gin3), .pin(pin3), .cin(cout2), .gout(gout3), .pout(pout3), .cout(cout3));
-   gp4 gp4(.gin(gin4), .pin(pin4), .cin(cout3), .gout(gout4), .pout(pout4), .cout(cout4));
-   //sum = xoring in a xor b xor carry for each individual bit
    //begin by calculating the middle carries
    wire c12, c23, c34;
+   gp4 gp1(.gin(gin1), .pin(pin1), .cin(cin), .gout(gout1), .pout(pout1), .cout(cout1));
    assign c12 = (gout1 | (pout1 & cin));
+   gp4 gp2(.gin(gin2), .pin(pin2), .cin(c12), .gout(gout2), .pout(pout2), .cout(cout2));
    assign c23 = (gout2 | (pout2 & c12));
+   gp4 gp3(.gin(gin3), .pin(pin3), .cin(c23), .gout(gout3), .pout(pout3), .cout(cout3));
    assign c34 = (gout3 | (pout3 & c23));
+   gp4 gp4(.gin(gin4), .pin(pin4), .cin(c34), .gout(gout4), .pout(pout4), .cout(cout4));
+   //sum = xoring in a xor b xor carry for each individual bit
    assign sum[0] = a[0] ^ b[0] ^ cin;
    assign sum[1] = a[1] ^ b[1] ^ cout1[0];
    assign sum[2] = a[2] ^ b[2] ^ cout1[1];

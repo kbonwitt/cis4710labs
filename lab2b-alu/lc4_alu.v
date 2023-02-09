@@ -9,7 +9,8 @@ module lc4_alu(input  wire [15:0] i_insn,
                input wire [15:0]  i_r2data,
                output wire [15:0] o_result);
       
-      wire [3:0] opcode, [2:0] midbits;
+      wire [3:0] opcode;
+      wire [2:0] midbits;
       assign opcode = i_insn[15:12];
       assign midbits = i_insn[5:3]; //these 'midbits' are helpful to distinguish between ADD/SUB/etc and AND/OR/etc
 
@@ -63,8 +64,12 @@ module lc4_alu(input  wire [15:0] i_insn,
       assign TRAP = (opcode == 4'b1111);
 
             //Is it necessary to state that these are signed?
-      wire signed [4:0] IMM5, signed [5:0] IMM6, signed [6:0] IMM7, 
-            signed [7:0] IMM8, signed [8:0] IMM9, signed [10:0] IMM11;
+      wire signed [4:0] IMM5;
+      wire signed [5:0] IMM6;
+      wire signed [6:0] IMM7;
+      wire signed [7:0] IMM8; 
+      wire signed [8:0] IMM9; 
+      wire signed [10:0] IMM11;
       assign IMM5 = i_insn[4:0];
       assign IMM6 = i_insn[5:0];
       assign IMM7 = i_insn[6:0];
@@ -73,20 +78,21 @@ module lc4_alu(input  wire [15:0] i_insn,
       assign IMM11 = i_insn[10:0];
 
             //is there a way to indicate that these are UNsigned?
-      wire unsigned [3:0] UIMM4, unsigned [6:0] UIMM7, unsigned [7:0] UIMM8
-      assign UIMM4 = i_insn[3:0]
-      assign UIMM7 = i_insn[6:0]
-      assign UIMM8 = i_insn[7:0]
+      wire [3:0] UIMM4;
+      wire [6:0] UIMM7;
+      wire [7:0] UIMM8;
+      assign UIMM4 = i_insn[3:0];
+      assign UIMM7 = i_insn[6:0];
+      assign UIMM8 = i_insn[7:0];
 
       /*** END DECODER ***/
 
 
       //insns that use the CLA: add, sub, addimm, ldr, str, jmp, branches
-      wire [15:0] cla_num1 = (JMP || BRANCH) ? i_pc :
-                              r1data;
-      wire [15:0] cla_num2 = ADD ? r2data :
-                              SUB ? !r2data :
-                              ADIMM ? ({{11{IMM5[4]}}, IMM5}) :
+      wire [15:0] cla_num1 = (JMP || BRANCH) ? i_pc : i_r1data;
+      wire [15:0] cla_num2 = ADD ? i_r2data :
+                              SUB ? !i_r2data :
+                              ADDIMM ? ({{11{IMM5[4]}}, IMM5}) :
                               (LDR || STR) ? ({{10{IMM6[5]}}, IMM6}) :
                               BRANCH ? ({{7{IMM9[8]}}, IMM9}) :
                               JMP ? ({{5{IMM11[10]}}, IMM11}) :
@@ -100,9 +106,9 @@ module lc4_alu(input  wire [15:0] i_insn,
       //MUL, DIV, MOD
       //TODO: figure out if r1data and r2data are signed or unsigned
       // and if the * operator cares
-      wire signed [15:0] mul_op = r1data * r2data;
-      wire [15:0] div_op, [15:0] mod_op;
-      lc4_divider d0 (.i_dividend(r1data), .i_divisor(r2data),
+      wire signed [15:0] mul_op = i_r1data * i_r2data;
+      wire [15:0] div_op, mod_op;
+      lc4_divider d0 (.i_dividend(i_r1data), .i_divisor(i_r2data),
             .o_remainder(mod_op), .o_quotient(div_op));
       wire [15:0] muldivmod = MUL ? mul_op :
                               DIV ? div_op :
@@ -111,11 +117,11 @@ module lc4_alu(input  wire [15:0] i_insn,
 
       
       //logical operators
-      wire [15:0] and_op = r1data & r2data;
-      wire [15:0] or_op = r1data | r2data;
-      wire [15:0] not_op = !r1data;
-      wire [15:0] xor_op = r1data ^ r2data; 
-      wire [15:0] andimm_op = r1data & {{11{IMM5[4]}}, IMM5};
+      wire [15:0] and_op = i_r1data & i_r2data;
+      wire [15:0] or_op = i_r1data | i_r2data;
+      wire [15:0] not_op = !i_r1data;
+      wire [15:0] xor_op = i_r1data ^ i_r2data; 
+      wire [15:0] andimm_op = i_r1data & {{11{IMM5[4]}}, IMM5};
             //note: i *think* this is how you sign extend...
       wire [15:0] logicals = AND ? and_op :
                               OR ? or_op :
@@ -126,9 +132,9 @@ module lc4_alu(input  wire [15:0] i_insn,
 
 
       //shifts
-      wire [16:0] sll_op = r1data << r2data;
-      wire [16:0] srl_op = r1data >> r2data;
-      wire [16:0] sra_op = r1data >>> r2data;
+      wire [16:0] sll_op = i_r1data << i_r2data;
+      wire [16:0] srl_op = i_r1data >> i_r2data;
+      wire [16:0] sra_op = i_r1data >>> i_r2data;
       wire [15:0] shifts = SLL ? sll_op :
                               SRL ? srl_op :
                               SRA ? sra_op :
@@ -136,13 +142,13 @@ module lc4_alu(input  wire [15:0] i_insn,
 
 
       //comparisons
-      wire [15:0] cmp_num1, [15:0] cmp_num2;
-      assign cmp_num1 = (CMPU || CMPIU) ? unsigned r1data :
-                                          r1data;
-      assign cmp_num2 = CMP ? r2data :
-                        CMPU ? unsigned r2data :
+      wire [15:0] cmp_num1, cmp_num2;
+      assign cmp_num1 = (CMPU || CMPIU) ? i_r1data :
+                                          i_r1data;
+      assign cmp_num2 = CMP ? i_r2data :
+                        CMPU ? i_r2data :
                         CMPI ? ({{9{IMM7[6]}}, IMM7}) :
-                        unsigned ({{9{IMM7[6]}}, IMM7}); 
+                        ({{9{IMM7[6]}}, IMM7}); 
       wire [15:0] comparisons = cmp_num1 > cmp_num2 ? 16'b1 :
                                     cmp_num1 == cmp_num2 ? 16'b0 :
                                     16'hFFFF;
@@ -151,12 +157,12 @@ module lc4_alu(input  wire [15:0] i_insn,
       //trap, jsr, jsrr      
       wire [15:0] trapjsrjsrr = TRAP ? (UIMM8 | 16'h8000) :
                                     JSR ? (16'h8000 & i_pc) | (IMM11 << 4) :
-                                    r1data;
+                                    i_r1data;
 
 
       //const, hiconst
       wire [15:0] constants = CONST ? {{7{IMM9[8]}}, IMM9} :
-                              (r1data & 16'hFF) | (UIMM8 << 8);
+                              (i_r1data & 16'hFF) | (UIMM8 << 8);
 
 
 
