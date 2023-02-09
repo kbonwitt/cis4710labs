@@ -31,8 +31,8 @@ module lc4_alu(input  wire [15:0] i_insn,
       assign CMPIU = (opcode == 4'b10 && i_insn[8:7] == 2'b11);
 
       wire JSRR, JSR;
-      assign CMP = (i_insn[15:11] == 5'b01000);
-      assign CMPU = (i_insn[15:11] == 5'b01001);
+      assign JSRR = (i_insn[15:11] == 5'b01000);
+      assign JSR = (i_insn[15:11] == 5'b01001);
 
       wire AND, NOT, OR, XOR, ANDIMM;
       assign AND = (opcode == 4'b101 && midbits == 3'b0);
@@ -43,7 +43,7 @@ module lc4_alu(input  wire [15:0] i_insn,
 
       wire LDR, STR;
       assign LDR = (opcode == 4'b0110);
-      assign LDR = (opcode == 4'b0111);
+      assign STR = (opcode == 4'b0111);
 
       wire RTI, CONST, HICONST;
       assign RTI = (opcode == 4'b1000);
