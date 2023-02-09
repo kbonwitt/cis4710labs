@@ -92,7 +92,6 @@ module lc4_alu(input  wire [15:0] i_insn,
                               JMP ? ({{5{IMM11[10]}}, IMM11}) :
                               16'b0; 
       wire cla_cin = (SUB || BRANCH);
-
       wire [15:0] cla_sum;
       cla16 c0 (.a(cla_num1), .b(cla_num2), .cin(cla_cin), .sum(cla_sum));
 
@@ -105,7 +104,6 @@ module lc4_alu(input  wire [15:0] i_insn,
       wire [15:0] div_op, [15:0] mod_op;
       lc4_divider d0 (.i_dividend(r1data), .i_divisor(r2data),
             .o_remainder(mod_op), .o_quotient(div_op));
-      
       wire [15:0] muldivmod = MUL ? mul_op :
                               DIV ? div_op :
                               MOD ? mod_op :
@@ -115,11 +113,10 @@ module lc4_alu(input  wire [15:0] i_insn,
       //logical operators
       wire [15:0] and_op = r1data & r2data;
       wire [15:0] or_op = r1data | r2data;
-      wire [15:0] not_op = !r1data[15:0];
-      wire [15:0] xor_op = r1data[15:0] ^ r2data[15:0]; 
-      wire [15:0] andimm_op = r1data & ({{11{IMM5[4]}}, IMM5});
+      wire [15:0] not_op = !r1data;
+      wire [15:0] xor_op = r1data ^ r2data; 
+      wire [15:0] andimm_op = r1data & {{11{IMM5[4]}}, IMM5};
             //note: i *think* this is how you sign extend...
-
       wire [15:0] logicals = AND ? and_op :
                               OR ? or_op :
                               NOT ? not_op :
@@ -132,7 +129,6 @@ module lc4_alu(input  wire [15:0] i_insn,
       wire [16:0] sll_op = r1data << r2data;
       wire [16:0] srl_op = r1data >> r2data;
       wire [16:0] sra_op = r1data >>> r2data;
-
       wire [15:0] shifts = SLL ? sll_op :
                               SRL ? srl_op :
                               SRA ? sra_op :
@@ -143,21 +139,24 @@ module lc4_alu(input  wire [15:0] i_insn,
       wire [15:0] cmp_num1, [15:0] cmp_num2;
       assign cmp_num1 = (CMPU || CMPIU) ? unsigned r1data :
                                           r1data;
-      
       assign cmp_num2 = CMP ? r2data :
                         CMPU ? unsigned r2data :
                         CMPI ? ({{9{IMM7[6]}}, IMM7}) :
                         unsigned ({{9{IMM7[6]}}, IMM7}); 
-      
       wire [15:0] comparisons = cmp_num1 > cmp_num2 ? 16'b1 :
                                     cmp_num1 == cmp_num2 ? 16'b0 :
                                     16'hFFFF;
 
 
-      //trap, jsr, jsrr
+      //trap, jsr, jsrr      
+      wire [15:0] trapjsrjsrr = TRAP ? (UIMM8 | 16'h8000) :
+                                    JSR ? (16'h8000 & i_pc) | (IMM11 << 4) :
+                                    r1data;
 
 
       //const, hiconst
+      wire [15:0] constants = CONST ? {{7{IMM9[8]}}, IMM9} :
+                              (r1data & 16'hFF) | (UIMM8 << 8);
 
 
 
@@ -165,10 +164,18 @@ module lc4_alu(input  wire [15:0] i_insn,
             //cla_sum = (AND || SUB || ADDIMM || LDR || STR || JMP || BRANCH)
             //muldivmod = (MUL || DIV || MOD)
             //logicals = (AND || OR || NOT || XOR || ANDIMM)
-            //compares = (CMP || CMPI || CMPU || CMPIU)
+            //comparisons = (CMP || CMPI || CMPU || CMPIU)
             //shifts = (SLL || SRL || SRA)
             //trapjsrjsrr = (TRAP || JSR || JSRR)
             //constants = (CONST || HICONST)
+      assign o_result = (AND || SUB || ANDIMM || LDR || STR || JMP || BRANCH) ? cla_sum :
+                        (MUL || DIV || MOD) ? muldivmod :
+                        (AND || OR || NOT || XOR || ANDIMM) ? logicals :
+                        (CMP || CMPI || CMPU || CMPIU) ? comparisons :
+                        (SLL || SRL || SRA) ? shifts :
+                        (TRAP || JSR || JSRR) ? trapjsrjsrr :
+                        (CONST || HICONST) ? constants :
+                        16'b0;
 
 
       /*** YOUR CODE HERE ***/
