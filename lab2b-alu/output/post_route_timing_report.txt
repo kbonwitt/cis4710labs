@@ -1,0 +1,83 @@
+Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2020.2 (lin64) Build 3064766 Wed Nov 18 09:12:47 MST 2020
+| Date         : Thu Feb  9 19:28:01 2023
+| Host         : big14.seas.upenn.edu running 64-bit openSUSE Leap 15.4
+| Command      : report_timing -file ./output/post_route_timing_report.txt
+| Design       : lc4_system_alu
+| Device       : 7z020-clg484
+| Speed File   : -1  PRODUCTION 1.12 2019-11-22
+------------------------------------------------------------------------------------
+
+Timing Report
+
+Slack (MET) :             3.953ns  (required time - arrival time)
+  Source:                 m_OLEDCtrl/state_reg[2]/C
+                            (rising edge-triggered cell FDRE clocked by oled_ctrl_clk  {rise@0.000ns fall@5.000ns period=10.000ns})
+  Destination:            m_OLEDCtrl/update_page_count_reg[0]/D
+                            (rising edge-triggered cell FDRE clocked by oled_ctrl_clk  {rise@0.000ns fall@5.000ns period=10.000ns})
+  Path Group:             oled_ctrl_clk
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            10.000ns  (oled_ctrl_clk rise@10.000ns - oled_ctrl_clk rise@0.000ns)
+  Data Path Delay:        5.713ns  (logic 1.195ns (20.918%)  route 4.518ns (79.082%))
+  Logic Levels:           6  (LUT3=2 LUT5=1 LUT6=3)
+  Clock Path Skew:        -0.024ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    5.028ns = ( 15.028 - 10.000 ) 
+    Source Clock Delay      (SCD):    5.482ns
+    Clock Pessimism Removal (CPR):    0.430ns
+  Clock Uncertainty:      0.035ns  ((TSJ^2 + TIJ^2)^1/2 + DJ) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Total Input Jitter      (TIJ):    0.000ns
+    Discrete Jitter          (DJ):    0.000ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock oled_ctrl_clk rise edge)
+                                                      0.000     0.000 r  
+    Y9                                                0.000     0.000 r  oled_ctrl_clk (IN)
+                         net (fo=0)                   0.000     0.000    oled_ctrl_clk
+    Y9                   IBUF (Prop_ibuf_I_O)         1.490     1.490 r  oled_ctrl_clk_IBUF_inst/O
+                         net (fo=1, routed)           2.171     3.661    oled_ctrl_clk_IBUF
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.101     3.762 r  oled_ctrl_clk_IBUF_BUFG_inst/O
+                         net (fo=195, routed)         1.720     5.482    m_OLEDCtrl/oled_ctrl_clk_IBUF_BUFG
+    SLICE_X84Y87         FDRE                                         r  m_OLEDCtrl/state_reg[2]/C
+  -------------------------------------------------------------------    -------------------
+    SLICE_X84Y87         FDRE (Prop_fdre_C_Q)         0.456     5.938 f  m_OLEDCtrl/state_reg[2]/Q
+                         net (fo=16, routed)          1.230     7.169    m_OLEDCtrl/state_reg_n_0_[2]
+    SLICE_X82Y88         LUT6 (Prop_lut6_I1_O)        0.124     7.293 r  m_OLEDCtrl/write_byte_count[2]_i_5/O
+                         net (fo=28, routed)          0.903     8.196    m_OLEDCtrl/write_byte_count[2]_i_5_n_0
+    SLICE_X90Y86         LUT3 (Prop_lut3_I1_O)        0.124     8.320 r  m_OLEDCtrl/temp_index[6]_i_8/O
+                         net (fo=1, routed)           0.282     8.602    m_OLEDCtrl/temp_index[6]_i_8_n_0
+    SLICE_X90Y86         LUT5 (Prop_lut5_I0_O)        0.124     8.726 r  m_OLEDCtrl/temp_index[6]_i_6/O
+                         net (fo=2, routed)           0.642     9.368    m_OLEDCtrl/temp_index[6]_i_6_n_0
+    SLICE_X87Y86         LUT6 (Prop_lut6_I5_O)        0.124     9.492 r  m_OLEDCtrl/temp_page[1]_i_3/O
+                         net (fo=2, routed)           0.461     9.953    m_OLEDCtrl/temp_page[1]_i_3_n_0
+    SLICE_X84Y87         LUT6 (Prop_lut6_I5_O)        0.124    10.077 r  m_OLEDCtrl/update_page_count[2]_i_2/O
+                         net (fo=3, routed)           0.653    10.730    m_OLEDCtrl/update_page_count[2]_i_2_n_0
+    SLICE_X84Y88         LUT3 (Prop_lut3_I1_O)        0.119    10.849 r  m_OLEDCtrl/update_page_count[0]_i_1/O
+                         net (fo=1, routed)           0.346    11.195    m_OLEDCtrl/update_page_count[0]_i_1_n_0
+    SLICE_X84Y88         FDRE                                         r  m_OLEDCtrl/update_page_count_reg[0]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock oled_ctrl_clk rise edge)
+                                                     10.000    10.000 r  
+    Y9                                                0.000    10.000 r  oled_ctrl_clk (IN)
+                         net (fo=0)                   0.000    10.000    oled_ctrl_clk
+    Y9                   IBUF (Prop_ibuf_I_O)         1.420    11.420 r  oled_ctrl_clk_IBUF_inst/O
+                         net (fo=1, routed)           1.972    13.392    oled_ctrl_clk_IBUF
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.091    13.483 r  oled_ctrl_clk_IBUF_BUFG_inst/O
+                         net (fo=195, routed)         1.546    15.028    m_OLEDCtrl/oled_ctrl_clk_IBUF_BUFG
+    SLICE_X84Y88         FDRE                                         r  m_OLEDCtrl/update_page_count_reg[0]/C
+                         clock pessimism              0.430    15.458    
+                         clock uncertainty           -0.035    15.423    
+    SLICE_X84Y88         FDRE (Setup_fdre_C_D)       -0.275    15.148    m_OLEDCtrl/update_page_count_reg[0]
+  -------------------------------------------------------------------
+                         required time                         15.148    
+                         arrival time                         -11.195    
+  -------------------------------------------------------------------
+                         slack                                  3.953    
+
+
+
+

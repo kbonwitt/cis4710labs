@@ -1,4 +1,5 @@
 /* TODO: INSERT NAME AND PENNKEY HERE */
+//Names: Charlie Gottlieb cbg613, Keith Bonwitt kbonwitt
 
 `timescale 1ns / 1ps
 `default_nettype none

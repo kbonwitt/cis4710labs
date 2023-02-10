@@ -1,4 +1,5 @@
 /* INSERT NAME AND PENNKEY HERE */
+//Names: Charlie Gottlieb cbg613, Keith Bonwitt kbonwitt
 
 `timescale 1ns / 1ps
 `default_nettype none
@@ -97,7 +98,7 @@ module lc4_alu(input  wire [15:0] i_insn,
                               BRANCH ? ({{7{IMM9[8]}}, IMM9}) :
                               JMP ? ({{5{IMM11[10]}}, IMM11}) :
                               16'b0; 
-      wire cla_cin = (SUB || BRANCH);
+      wire cla_cin = (SUB || BRANCH || JMP);
       wire [15:0] cla_sum;
       cla16 c0 (.a(cla_num1), .b(cla_num2), .cin(cla_cin), .sum(cla_sum));
 
@@ -134,7 +135,7 @@ module lc4_alu(input  wire [15:0] i_insn,
       //shifts
       wire [16:0] sll_op = i_r1data << UIMM4;
       wire [16:0] srl_op = i_r1data >> UIMM4;
-      wire [16:0] sra_op = i_r1data >>> UIMM4;
+      wire [16:0] sra_op = $signed(i_r1data) >>> UIMM4;
       wire [15:0] shifts = SLL ? sll_op :
                         SRL ? srl_op :
                         SRA ? sra_op :
@@ -159,7 +160,7 @@ module lc4_alu(input  wire [15:0] i_insn,
 
 
       //trap, jsr, jsrr      
-      wire [15:0] trapjsrjsrrrti = TRAP ? (UIMM8 | 16'h8000) :
+      wire [15:0] trapjsrjsrrrtijmpr = TRAP ? (UIMM8 | 16'h8000) :
                                     JSR ? (16'h8000 & i_pc) | (IMM11 << 4) :
                                     i_r1data;
 
@@ -183,7 +184,7 @@ module lc4_alu(input  wire [15:0] i_insn,
                         (MUL || DIV || MOD) ? muldivmod :
                         (CMP || CMPI || CMPU || CMPIU) ? comparisons :
                         (SLL || SRL || SRA) ? shifts :
-                        (TRAP || JSR || JSRR || RTI) ? trapjsrjsrrrti :
+                        (TRAP || JSR || JSRR || RTI || JMPR) ? trapjsrjsrrrtijmpr :
                         (CONST || HICONST) ? constants :
                         16'b0;
 
