@@ -23,7 +23,7 @@ module lc4_alu(input  wire [15:0] i_insn,
       assign MUL = (opcode == 4'b1 && midbits == 3'b1);
       assign SUB = (opcode == 4'b1 && midbits == 3'b10);
       assign DIV = (opcode == 4'b1 && midbits == 3'b11);
-      assign ADDIMM = (opcode == 4'b1 && midbits[2] == 1'b1); //for ADDIMM, just the most significant midbit must be 1
+      assign ADDIMM = (opcode == 4'b1 && i_insn[5] == 1'b1); //for ADDIMM, just the most significant midbit must be 1
 
       wire CMP, CMPU, CMPI, CMPIU;
       assign CMP = (opcode == 4'b10 && i_insn[8:7] == 2'b0);
@@ -92,7 +92,9 @@ module lc4_alu(input  wire [15:0] i_insn,
       //insns that use the CLA: add, sub, addimm, ldr, str, jmp, branches
       wire [15:0] cla_num1 = (JMP || BRANCH) ? i_pc : i_r1data;
       wire [15:0] cla_num2 = ADD ? i_r2data :
+<<<<<<< HEAD
                               SUB ? ~i_r2data :
+
                               ADDIMM ? ({{11{IMM5[4]}}, IMM5}) :
                               (LDR || STR) ? ({{10{IMM6[5]}}, IMM6}) :
                               BRANCH ? ({{7{IMM9[8]}}, IMM9}) :
@@ -144,6 +146,7 @@ module lc4_alu(input  wire [15:0] i_insn,
 
       //comparisons
       wire [15:0] cmp_num1, cmp_num2;
+<<<<<<< HEAD
       assign cmp_num1 = (CMPU || CMPIU) ? i_r1data :
                                           i_r1data;
       assign cmp_num2 = CMP ? $signed(i_r2data) :
@@ -157,6 +160,7 @@ module lc4_alu(input  wire [15:0] i_insn,
             (!cmp_num1[15] & cmp_num2[15]) ? 16'b1 :
             (cmp_num1 > cmp_num2) ? 16'b1 : 
             16'hFFFF;
+=======
 
 
       //trap, jsr, jsrr      
@@ -179,8 +183,12 @@ module lc4_alu(input  wire [15:0] i_insn,
             //shifts = (SLL || SRL || SRA)
             //trapjsrjsrr = (TRAP || JSR || JSRR)
             //constants = (CONST || HICONST)
+<<<<<<< HEAD
       assign o_result = (AND || OR || NOT || XOR || ANDIMM) ? logicals :
                         (ADD || SUB || ADDIMM || LDR || STR || JMP || BRANCH) ? cla_sum :
+=======
+      assign o_result = (ADD || SUB || ADDIMM || LDR || STR || JMP || BRANCH) ? cla_sum :
+>>>>>>> 2b7ceb8350222c21584ed30ba03abf73d8d4973c
                         (MUL || DIV || MOD) ? muldivmod :
                         (CMP || CMPI || CMPU || CMPIU) ? comparisons :
                         (SLL || SRL || SRA) ? shifts :
