@@ -41,35 +41,35 @@ module lc4_regfile #(parameter n = 16)
    
    Nbit_reg #(.n(16)) r0
    (.in(i_wdata), .out(o_r0)
-    .clk(clk), .we(i_rd == 3'b0), .gwe(gwe), .rst(rst);
+    .clk(clk), .we(i_rd == 3'b0), .gwe(gwe), .rst(rst));
    
     Nbit_reg #(.n(16)) r1
     (.in(i_wdata), .out(o_r1)
-     .clk(clk), .we(i_rd == 3'b1), .gwe(gwe), .rst(rst);
+     .clk(clk), .we(i_rd == 3'b1), .gwe(gwe), .rst(rst));
    
     Nbit_reg #(.n(16)) r2
     (.in(i_wdata), .out(o_r2)
-     .clk(clk), .we(i_rd == 3'b10), .gwe(gwe), .rst(rst);
+     .clk(clk), .we(i_rd == 3'b10), .gwe(gwe), .rst(rst));
     
     Nbit_reg #(.n(16)) r3
     (.in(i_wdata), .out(o_r3)
-     .clk(clk), .we(i_rd == 3'b11), .gwe(gwe), .rst(rst);
+     .clk(clk), .we(i_rd == 3'b11), .gwe(gwe), .rst(rst));
     
     Nbit_reg #(.n(16)) r4
     (.in(i_wdata), .out(o_r4)
-     .clk(clk), .we(i_rd == 3'b100), .gwe(gwe), .rst(rst);
+     .clk(clk), .we(i_rd == 3'b100), .gwe(gwe), .rst(rst));
     
     Nbit_reg #(.n(16)) r5
     (.in(i_wdata), .out(o_r5)
-     .clk(clk), .we(i_rd == 3'b101), .gwe(gwe), .rst(rst);
+     .clk(clk), .we(i_rd == 3'b101), .gwe(gwe), .rst(rst));
     
     Nbit_reg #(.n(16)) r6
     (.in(i_wdata), .out(o_r6)
-     .clk(clk), .we(i_rd == 3'b110), .gwe(gwe), .rst(rst);
+     .clk(clk), .we(i_rd == 3'b110), .gwe(gwe), .rst(rst));
     
     Nbit_reg #(.n(16)) r7
     (.in(i_wdata), .out(o_r7)
-     .clk(clk), .we(i_rd == 3'b111), .gwe(gwe), .rst(rst);
+     .clk(clk), .we(i_rd == 3'b111), .gwe(gwe), .rst(rst));
    
      
      assign o_rsdata = (i_rs == 3'b0) ? o_r0 :
