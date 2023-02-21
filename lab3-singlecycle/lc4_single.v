@@ -70,6 +70,39 @@ module lc4_processor
 
 
 
+   
+
+   // ----  NZP stuff ------
+   //TODO:
+      // after making the ALU, either (a) set its output to be the wire output_ALU
+      // or (b) change output_ALU in nzp_reg_input below to whatever the ALU output wire is named
+
+   wire [2:0] nzp_reg_input, [2:0] nzp_reg_output;
+   assign nzp_reg_input = (output_ALU == 16'b1) ? 3'b001 : //P
+                          (output_ALU == 16'b0) ? 3'b010 : //Z
+                                                  3'b100; //N (default, but should be when o_ALU is -1)
+
+   Nbit_reg #(.n(3)) nzp_reg 
+      (.in(nzp_reg_input), .out(nzp_reg_output),
+      .clk(clk), .we(nzp_we), .gwe(gwe), .rst(rst));
+   
+   wire [2:0] nzp_and_insn_11_9; //used just as an intermediate to calculate should_branch
+   assign nzp_and_insn_11_9 = nzp_reg_output & i_cur_insn[11:9];
+
+   wire should_branch;
+   assign should_branch = is_branch && ( |nzp_and_insn_11_9 ); 
+      //should branch is true when is_branch is active AND at least one bit matches between the insn[11:9] and NZP bits
+   
+
+
+
+
+
+
+
+
+
+
    /* Add $display(...) calls in the always block below to
     * print out debug information at the end of every cycle.
     *
