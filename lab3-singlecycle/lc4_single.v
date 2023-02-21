@@ -67,11 +67,37 @@ module lc4_processor
    /*******************************
     * TODO: INSERT YOUR CODE HERE *
     *******************************/
-
-
+   
+   
+   // --- DECODING ---
+   wire [2:0] r1sel, r1re, [2:0] r2sel, r2re, [2:0] wsel, refile_we, nzp_we, select_pc_plus_one, is_load, is_store, is_branch, is_control_insn;
+  
+   lc4_decoder decoder(.insn(i_cur_insn),               // instruction
+                       .r1sel(r1sel),              // rs
+                       .r1re(r1re),               // does this instruction read from rs?
+                       .r2sel(r2sel),              // rt
+                       .r2re(r2re),               // does this instruction read from rt?
+                       .wsel(wsel),               // rd
+                       .regfile_we(regfile_we),         // does this instruction write to rd?
+                       .nzp_we(nzp_we),             // does this instruction write the NZP bits?
+                       .select_pc_plus_one(select_pc_plus_one), // write PC+1 to the regfile?
+                       .is_load(is_load),            // is this a load instruction?
+                       .is_store(is_store),           // is this a store instruction?
+                       .is_branch(is_branch),          // is this a branch instruction?
+                       .is_control_insn(is_control_insn)     // is this a control instruction (JSR, JSRR, RTI, JMPR, JMP, TRAP)?
+                   );
 
    
+   // ---- Regfile stuff ----
+   
+   
+ 
 
+   // ---- ALU stuff -----
+   
+   
+   
+   
    // ----  NZP stuff ------
    //TODO:
       // after making the ALU, either (a) set its output to be the wire output_ALU
@@ -93,11 +119,29 @@ module lc4_processor
    assign should_branch = is_branch && ( |nzp_and_insn_11_9 ); 
       //should branch is true when is_branch is active AND at least one bit matches between the insn[11:9] and NZP bits
    
+   
+   
+   
+   // ----PC selection ----
+   
+   
+ 
 
 
-
-
-
+   
+   
+   // ---- TEST WIRES -----
+   
+   assign test_cur_p =         // Testbench: program counter
+   assign test_cur_insn = i_cur_insn;      // Testbench: instruction bits
+   assign test_regfile_we =   // Testbench: register file write enable
+   assign test_regfile_wsel =  // Testbench: which register to write in the register file 
+   assign test_regfile_data =  // Testbench: value to write into the register file
+   assign test_nzp_we = nzp_we;        // Testbench: NZP condition codes write enable
+   assign test_nzp_new_bits = nzp_reg_input;       // Testbench: value to write to NZP bits
+   assign test_dmem_we =       // Testbench: data memory write enable
+   assign test_dmem_addr =     // Testbench: address to read/write memory
+   assign test_dmem_data =
 
 
 
