@@ -67,17 +67,22 @@ module lc4_processor
    /*******************************
     * TODO: INSERT YOUR CODE HERE *
     *******************************/
+
+    wire [15:0] pc_plus_one;
+    cla16 make_pc_plus_one 
+      (.a(pc), .b(16'b1), .cin(1'b0), .sum(pc_plus_one));
    
    
    // --- DECODING ---
-   wire [2:0] r1sel, r1re, [2:0] r2sel, r2re, [2:0] wsel, refile_we, nzp_we, select_pc_plus_one, is_load, is_store, is_branch, is_control_insn;
-  
+   wire [2:0] r1sel, r2sel, rd_sel;
+   wire r1re, r2re, regfile_we, nzp_we, select_pc_plus_one, is_load, is_store, is_branch, is_control_insn;
+   
    lc4_decoder decoder(.insn(i_cur_insn),               // instruction
                        .r1sel(r1sel),              // rs
                        .r1re(r1re),               // does this instruction read from rs?
                        .r2sel(r2sel),              // rt
                        .r2re(r2re),               // does this instruction read from rt?
-                       .wsel(wsel),               // rd
+                       .wsel(rd_sel),               // rd
                        .regfile_we(regfile_we),         // does this instruction write to rd?
                        .nzp_we(nzp_we),             // does this instruction write the NZP bits?
                        .select_pc_plus_one(select_pc_plus_one), // write PC+1 to the regfile?
@@ -89,59 +94,97 @@ module lc4_processor
 
    
    // ---- Regfile stuff ----
-   
+   /* TO ASSIGN
+   */
+
+   wire [15:0] rs_data, rt_data;
+   wire [15:0] regfile_data_to_write;
+
+   lc4_regfile #(.n(16)) regfile 
+         (.clk(clk), .gwe(gwe), .rst(rst), 
+         .i_rs(r1sel), .o_rs_data(rs_data), 
+         .i_rt(r2sel), .o_rt_data(rt_data), 
+         .i_rd(rd_sel), .i_wdata(regfile_data_to_write), .i_rd_we(regfile_we)
+         );
    
  
 
    // ---- ALU stuff -----
+   /* TO ASSIGN
+   */
+
+   wire [15:0] alu_output;
+
+   lc4_alu alu 
+      (.i_insn(i_cur_insn), .i_pc(pc),
+      .i_r1data(rs_data), .i_r2data(rt_data),
+      .o_result(alu_output)
+      );
    
    
-   
+
+   // ---- MEMORY stuff -----  
+   assign o_dmem_we = is_store;
+   assign o_dmem_addr = alu_output;
+   assign o_dmem_towrite = rt_data;
+
+
+   // other, idk
+   wire [15:0] memory_or_alu_output;
+   assign memory_or_alu_output = is_load ? i_cur_dmem_data :
+                                           alu_output;
+
    
    // ----  NZP stuff ------
-   //TODO:
-      // after making the ALU, either (a) set its output to be the wire output_ALU
-      // or (b) change output_ALU in nzp_reg_input below to whatever the ALU output wire is named
-
-   wire [2:0] nzp_reg_input, [2:0] nzp_reg_output;
-   assign nzp_reg_input = (output_ALU == 16'b1) ? 3'b001 : //P
-                          (output_ALU == 16'b0) ? 3'b010 : //Z
-                                                  3'b100; //N (default, but should be when o_ALU is -1)
+   wire [2:0] nzp_reg_input, nzp_reg_output;
+   assign nzp_reg_input = (alu_output > 0) ? 3'b001 : //P
+                          (alu_output == 0) ? 3'b010 : //Z
+                          3'b100; //N
 
    Nbit_reg #(.n(3)) nzp_reg 
       (.in(nzp_reg_input), .out(nzp_reg_output),
       .clk(clk), .we(nzp_we), .gwe(gwe), .rst(rst));
    
-   wire [2:0] nzp_and_insn_11_9; //used just as an intermediate to calculate should_branch
-   assign nzp_and_insn_11_9 = nzp_reg_output & i_cur_insn[11:9];
+   wire [2:0] nzp_and_insn_11_9; //used just as an intermediate to calculate 'should_branch'
+   assign nzp_and_insn_11_9 = nzp_reg_output & i_cur_insn[11:9]; //bitwise AND
 
    wire should_branch;
    assign should_branch = is_branch && ( |nzp_and_insn_11_9 ); 
-      //should branch is true when is_branch is active AND at least one bit matches between the insn[11:9] and NZP bits
+      //'should_branch' is true when is_branch is active AND at least one bit matches between the insn[11:9] and NZP bits
    
    
-   
-   
-   // ----PC selection ----
-   
-   
- 
 
+   //other muxes
+      // including regfile_data and next_pc
+   wire [15:0] pc_plus_one_or_alu_output;
+   assign pc_plus_one_or_alu_output = should_branch ? alu_output :
+                                                      pc_plus_one;
 
+   assign regfile_data_to_write = select_pc_plus_one ? pc_plus_one :
+                                                       memory_or_alu_output;
+
+   assign next_pc = is_control_insn || should_branch ? memory_or_alu_output :
+                                                       pc_plus_one;
+   assign o_cur_pc = next_pc; //confused about this, not sure if it's true                                   
+   
+
+   
    
    
    // ---- TEST WIRES -----
    
-   assign test_cur_p =         // Testbench: program counter
-   assign test_cur_insn = i_cur_insn;      // Testbench: instruction bits
-   assign test_regfile_we =   // Testbench: register file write enable
-   assign test_regfile_wsel =  // Testbench: which register to write in the register file 
-   assign test_regfile_data =  // Testbench: value to write into the register file
-   assign test_nzp_we = nzp_we;        // Testbench: NZP condition codes write enable
-   assign test_nzp_new_bits = nzp_reg_input;       // Testbench: value to write to NZP bits
-   assign test_dmem_we =       // Testbench: data memory write enable
-   assign test_dmem_addr =     // Testbench: address to read/write memory
-   assign test_dmem_data =
+   assign test_cur_pc = o_cur_pc;                // Testbench: program counter
+   assign test_cur_insn = i_cur_insn;           // Testbench: instruction bits
+   assign test_regfile_we = regfile_we;       // Testbench: register file write enable
+   assign test_regfile_wsel = rd_sel;           // Testbench: which register to write in the register file 
+   assign test_regfile_data = regfile_data_to_write; // Testbench: value to write into the register file
+   assign test_nzp_we = nzp_we;                 // Testbench: NZP condition codes write enable
+   assign test_nzp_new_bits = nzp_reg_input;    // Testbench: value to write to NZP bits
+   assign test_dmem_we = o_dmem_we;             // Testbench: data memory write enable
+   assign test_dmem_addr = o_dmem_addr;         // Testbench: address to read/write memory
+   assign test_dmem_data = is_load ? i_cur_dmem_data :
+                           is_store ? o_dmem_towrite :
+                           16'b0;               // Testbench: value read/writen from/to memory
 
 
 
