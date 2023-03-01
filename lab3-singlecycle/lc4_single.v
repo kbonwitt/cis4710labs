@@ -133,8 +133,8 @@ module lc4_processor
    
    // ----  NZP stuff ------
    wire [2:0] nzp_reg_input, nzp_reg_output;
-   assign nzp_reg_input = (alu_output == 0) ? 3'b010 : //Z
-                          (alu_output[15] == 0) ? 3'b001 : //P
+   assign nzp_reg_input = (memory_or_alu_output == 0) ? 3'b010 : //Z
+                          (memory_or_alu_output[15] == 0) ? 3'b001 : //P
                           3'b100; //N
 
    Nbit_reg #(.n(3)) nzp_reg 
