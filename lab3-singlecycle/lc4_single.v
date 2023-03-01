@@ -165,7 +165,7 @@ module lc4_processor
 
    assign next_pc = is_control_insn || should_branch ? memory_or_alu_output :
                                                        pc_plus_one;
-   assign o_cur_pc = next_pc; //confused about this, not sure if it's true                                   
+   assign o_cur_pc = next_pc; //confused about this, not sure if it's 'next_pc' or 'pc'                                
    
 
    
