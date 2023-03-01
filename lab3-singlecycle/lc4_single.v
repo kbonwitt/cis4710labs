@@ -128,26 +128,7 @@ module lc4_processor
    // other, idk
    wire [15:0] memory_or_alu_output;
    assign memory_or_alu_output = is_load ? i_cur_dmem_data :
-                                           alu_output;
-
-   
-   // ----  NZP stuff ------
-   wire [2:0] nzp_reg_input, nzp_reg_output;
-   assign nzp_reg_input = (memory_or_alu_output == 0) ? 3'b010 : //Z
-                          (memory_or_alu_output[15] == 0) ? 3'b001 : //P
-                          3'b100; //N
-
-   Nbit_reg #(.n(3)) nzp_reg 
-      (.in(nzp_reg_input), .out(nzp_reg_output),
-      .clk(clk), .we(nzp_we), .gwe(gwe), .rst(rst));
-   
-   wire [2:0] nzp_and_insn_11_9; //used just as an intermediate to calculate 'should_branch'
-   assign nzp_and_insn_11_9 = nzp_reg_output & i_cur_insn[11:9]; //bitwise AND
-
-   wire should_branch;
-   assign should_branch = is_branch && ( |nzp_and_insn_11_9 ); 
-      //'should_branch' is true when is_branch is active AND at least one bit matches between the insn[11:9] and NZP bits
-   
+                                           alu_output;   
    
 
    //other muxes
@@ -161,8 +142,25 @@ module lc4_processor
 
    assign next_pc = is_control_insn || should_branch ? memory_or_alu_output :
                                                        pc_plus_one;
-   assign o_cur_pc = pc; //confused about this, not sure if it's true                                   
+   assign o_cur_pc = pc;                                 
    
+
+   // ----  NZP stuff ------
+   wire [2:0] nzp_reg_input, nzp_reg_output;
+   assign nzp_reg_input = (regfile_data_to_write == 0) ? 3'b010 : //Z
+                          (regfile_data_to_write[15] == 0) ? 3'b001 : //P
+                          3'b100; //N
+
+   Nbit_reg #(.n(3)) nzp_reg 
+      (.in(nzp_reg_input), .out(nzp_reg_output),
+      .clk(clk), .we(nzp_we), .gwe(gwe), .rst(rst));
+   
+   wire [2:0] nzp_and_insn_11_9; //used just as an intermediate to calculate 'should_branch'
+   assign nzp_and_insn_11_9 = nzp_reg_output & i_cur_insn[11:9]; //bitwise AND
+
+   wire should_branch;
+   assign should_branch = is_branch && ( |nzp_and_insn_11_9 ); 
+      //'should_branch' is true when is_branch is active AND at least one bit matches between the insn[11:9] and NZP bits
 
    
    
