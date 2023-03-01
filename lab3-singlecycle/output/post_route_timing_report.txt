@@ -1,0 +1,256 @@
+Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2020.2 (lin64) Build 3064766 Wed Nov 18 09:12:47 MST 2020
+| Date         : Thu Feb 23 17:17:46 2023
+| Host         : big09.seas.upenn.edu running 64-bit openSUSE Leap 15.4
+| Command      : report_timing -file ./output/post_route_timing_report.txt
+| Design       : lc4_system
+| Device       : 7z020-clg484
+| Speed File   : -1  PRODUCTION 1.12 2019-11-22
+------------------------------------------------------------------------------------
+
+Timing Report
+
+Slack (VIOLATED) :        -1.452ns  (required time - arrival time)
+  Source:                 memory/memory/IDRAM_reg_0_15/CLKBWRCLK
+                            (rising edge-triggered cell RAMB36E1 clocked by clk_processor_design_1_clk_wiz_0_0  {rise@0.000ns fall@32.000ns period=64.000ns})
+  Destination:            timer/counter_reg/state_reg[29]/D
+                            (rising edge-triggered cell FDRE clocked by clk_processor_design_1_clk_wiz_0_0  {rise@0.000ns fall@32.000ns period=64.000ns})
+  Path Group:             clk_processor_design_1_clk_wiz_0_0
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            64.000ns  (clk_processor_design_1_clk_wiz_0_0 rise@64.000ns - clk_processor_design_1_clk_wiz_0_0 rise@0.000ns)
+  Data Path Delay:        65.199ns  (logic 19.780ns (30.338%)  route 45.419ns (69.662%))
+  Logic Levels:           74  (CARRY4=30 LUT2=1 LUT3=2 LUT4=3 LUT5=16 LUT6=20 MUXF7=1 RAMB36E1=1)
+  Clock Path Skew:        -0.264ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    -1.589ns = ( 62.411 - 64.000 ) 
+    Source Clock Delay      (SCD):    -0.849ns
+    Clock Pessimism Removal (CPR):    0.476ns
+  Clock Uncertainty:      0.098ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.184ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk_processor_design_1_clk_wiz_0_0 rise edge)
+                                                      0.000     0.000 r  
+    Y9                                                0.000     0.000 r  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000     0.000    mmcm0/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         1.490     1.490 r  mmcm0/clkin1_ibufg/O
+                         net (fo=1, routed)           1.285     2.775    mmcm0/clk_in1_design_1_clk_wiz_0_0
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                     -7.343    -4.568 r  mmcm0/mmcm_adv_inst/CLKOUT0
+                         net (fo=1, routed)           1.855    -2.713    mmcm0/clk_processor_design_1_clk_wiz_0_0
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.101    -2.612 r  mmcm0/clkout1_buf/O
+                         net (fo=321, routed)         1.762    -0.849    memory/memory/clk_processor
+    RAMB36_X3Y7          RAMB36E1                                     r  memory/memory/IDRAM_reg_0_15/CLKBWRCLK
+  -------------------------------------------------------------------    -------------------
+    RAMB36_X3Y7          RAMB36E1 (Prop_ramb36e1_CLKBWRCLK_CASCADEOUTB)
+                                                      2.872     2.023 r  memory/memory/IDRAM_reg_0_15/CASCADEOUTB
+                         net (fo=1, routed)           0.065     2.088    memory/memory/IDRAM_reg_0_15_n_1
+    RAMB36_X3Y8          RAMB36E1 (Prop_ramb36e1_CASCADEINB_DOBDO[0])
+                                                      0.425     2.513 f  memory/memory/IDRAM_reg_1_15/DOBDO[0]
+                         net (fo=8, routed)           2.283     4.797    memory/memory/i1out_reg/mem_out_i[12]
+    SLICE_X26Y21         LUT6 (Prop_lut6_I2_O)        0.124     4.921 r  memory/memory/i1out_reg/IDRAM_reg_0_0_i_252/O
+                         net (fo=2, routed)           0.593     5.513    memory/memory/i1out_reg/IDRAM_reg_0_0_i_252_n_0
+    SLICE_X28Y21         LUT6 (Prop_lut6_I0_O)        0.124     5.637 r  memory/memory/i1out_reg/IDRAM_reg_0_0_i_114/O
+                         net (fo=32, routed)          0.723     6.360    memory/memory/i1out_reg/state_reg[13]_0
+    SLICE_X32Y19         LUT6 (Prop_lut6_I4_O)        0.124     6.484 r  memory/memory/i1out_reg/mul_op_i_100/O
+                         net (fo=32, routed)          1.197     7.682    proc_inst/regfile/r7/r2sel[1]
+    SLICE_X42Y17         LUT6 (Prop_lut6_I2_O)        0.124     7.806 f  proc_inst/regfile/r7/mul_op_i_43/O
+                         net (fo=1, routed)           0.000     7.806    proc_inst/regfile/r3/mul_op_24
+    SLICE_X42Y17         MUXF7 (Prop_muxf7_I1_O)      0.214     8.020 f  proc_inst/regfile/r3/mul_op_i_5/O
+                         net (fo=62, routed)          1.076     9.096    proc_inst/regfile/r3/state_reg[11]_2
+    SLICE_X34Y26         LUT2 (Prop_lut2_I1_O)        0.297     9.393 r  proc_inst/regfile/r3/remainder_lt_divisor_carry__0_i_7__14/O
+                         net (fo=1, routed)           0.000     9.393    proc_inst/alu/d0/i0/remainder_lt_divisor_carry_i_8_0[1]
+    SLICE_X34Y26         CARRY4 (Prop_carry4_S[1]_CO[3])
+                                                      0.533     9.926 r  proc_inst/alu/d0/i0/remainder_lt_divisor_carry__0/CO[3]
+                         net (fo=99, routed)          1.240    11.166    proc_inst/regfile/r3/CO[0]
+    SLICE_X35Y25         LUT5 (Prop_lut5_I3_O)        0.152    11.318 r  proc_inst/regfile/r3/o_remainder0_carry_i_3__1/O
+                         net (fo=2, routed)           0.549    11.867    proc_inst/alu/d0/i1/remainder_1[0]
+    SLICE_X37Y24         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.709    12.576 r  proc_inst/alu/d0/i1/o_remainder0_carry/CO[3]
+                         net (fo=1, routed)           0.009    12.585    proc_inst/alu/d0/i1/o_remainder0_carry_n_0
+    SLICE_X37Y25         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    12.699 r  proc_inst/alu/d0/i1/o_remainder0_carry__0/CO[3]
+                         net (fo=1, routed)           0.000    12.699    proc_inst/alu/d0/i1/o_remainder0_carry__0_n_0
+    SLICE_X37Y26         CARRY4 (Prop_carry4_CI_O[2])
+                                                      0.239    12.938 f  proc_inst/alu/d0/i1/o_remainder0_carry__1/O[2]
+                         net (fo=4, routed)           0.601    13.538    proc_inst/regfile/r3/o_remainder0[10]
+    SLICE_X40Y25         LUT4 (Prop_lut4_I3_O)        0.302    13.840 f  proc_inst/regfile/r3/remainder_lt_divisor_carry__0_i_13__0/O
+                         net (fo=7, routed)           0.646    14.486    proc_inst/regfile/r3/alu/d0/remainder_2[10]
+    SLICE_X41Y24         LUT6 (Prop_lut6_I1_O)        0.124    14.610 r  proc_inst/regfile/r3/remainder_lt_divisor_carry__0_i_3__1/O
+                         net (fo=1, routed)           0.634    15.244    proc_inst/alu/d0/i2/VRAM_reg_0[1]
+    SLICE_X38Y24         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    15.764 r  proc_inst/alu/d0/i2/remainder_lt_divisor_carry__0/CO[3]
+                         net (fo=47, routed)          1.107    16.870    proc_inst/regfile/r3/o_remainder0_carry__0_27[0]
+    SLICE_X38Y27         LUT5 (Prop_lut5_I3_O)        0.124    16.994 f  proc_inst/regfile/r3/o_remainder0_carry_i_2__11/O
+                         net (fo=6, routed)           0.603    17.598    proc_inst/regfile/r3/o_remainder0_carry_1
+    SLICE_X33Y23         LUT6 (Prop_lut6_I5_O)        0.124    17.722 r  proc_inst/regfile/r3/remainder_lt_divisor_carry_i_3__2/O
+                         net (fo=1, routed)           0.526    18.247    proc_inst/alu/d0/i3/remainder_lt_divisor_carry__0_0[1]
+    SLICE_X35Y23         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.507    18.754 r  proc_inst/alu/d0/i3/remainder_lt_divisor_carry/CO[3]
+                         net (fo=1, routed)           0.000    18.754    proc_inst/alu/d0/i3/remainder_lt_divisor_carry_n_0
+    SLICE_X35Y24         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    18.868 r  proc_inst/alu/d0/i3/remainder_lt_divisor_carry__0/CO[3]
+                         net (fo=65, routed)          1.371    20.239    proc_inst/regfile/r3/VRAM_reg_0_0[0]
+    SLICE_X35Y21         LUT3 (Prop_lut3_I1_O)        0.152    20.391 f  proc_inst/regfile/r3/remainder_lt_divisor_carry_i_9__11/O
+                         net (fo=7, routed)           0.494    20.886    proc_inst/regfile/r3/alu/d0/remainder_4[6]
+    SLICE_X34Y20         LUT6 (Prop_lut6_I1_O)        0.326    21.212 r  proc_inst/regfile/r3/remainder_lt_divisor_carry_i_1__3/O
+                         net (fo=1, routed)           0.514    21.726    proc_inst/alu/d0/i4/remainder_lt_divisor_carry__0_0[3]
+    SLICE_X34Y21         CARRY4 (Prop_carry4_DI[3]_CO[3])
+                                                      0.396    22.122 r  proc_inst/alu/d0/i4/remainder_lt_divisor_carry/CO[3]
+                         net (fo=1, routed)           0.000    22.122    proc_inst/alu/d0/i4/remainder_lt_divisor_carry_n_0
+    SLICE_X34Y22         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    22.239 r  proc_inst/alu/d0/i4/remainder_lt_divisor_carry__0/CO[3]
+                         net (fo=54, routed)          1.090    23.329    proc_inst/regfile/r3/remainder_lt_divisor_carry[0]
+    SLICE_X35Y22         LUT5 (Prop_lut5_I3_O)        0.124    23.453 f  proc_inst/regfile/r3/o_remainder0_carry__1_i_3__7/O
+                         net (fo=9, routed)           0.869    24.322    proc_inst/regfile/r3/o_remainder0_carry__2_2[5]
+    SLICE_X39Y21         LUT6 (Prop_lut6_I1_O)        0.124    24.446 r  proc_inst/regfile/r3/remainder_lt_divisor_carry__0_i_4__4/O
+                         net (fo=1, routed)           0.530    24.976    proc_inst/alu/d0/i5/remainder_lt_divisor_carry_i_8__4[0]
+    SLICE_X40Y21         CARRY4 (Prop_carry4_DI[0]_CO[3])
+                                                      0.526    25.502 r  proc_inst/alu/d0/i5/remainder_lt_divisor_carry__0/CO[3]
+                         net (fo=56, routed)          1.226    26.727    proc_inst/regfile/r3/VRAM_reg_0_1[0]
+    SLICE_X41Y22         LUT5 (Prop_lut5_I3_O)        0.124    26.851 f  proc_inst/regfile/r3/o_remainder0_carry__1_i_3__8/O
+                         net (fo=10, routed)          0.467    27.318    proc_inst/regfile/r3/o_remainder0_carry__1_4
+    SLICE_X41Y22         LUT6 (Prop_lut6_I1_O)        0.124    27.442 r  proc_inst/regfile/r3/remainder_lt_divisor_carry__0_i_4__5/O
+                         net (fo=1, routed)           0.634    28.076    proc_inst/alu/d0/i6/remainder_lt_divisor_carry_i_8__5[0]
+    SLICE_X39Y20         CARRY4 (Prop_carry4_DI[0]_CO[3])
+                                                      0.526    28.602 r  proc_inst/alu/d0/i6/remainder_lt_divisor_carry__0/CO[3]
+                         net (fo=57, routed)          1.358    29.960    proc_inst/regfile/r3/remainder_lt_divisor_carry_0[0]
+    SLICE_X44Y19         LUT5 (Prop_lut5_I3_O)        0.124    30.084 f  proc_inst/regfile/r3/o_remainder0_carry__1_i_1__8/O
+                         net (fo=9, routed)           0.628    30.712    proc_inst/regfile/r3/o_remainder0_carry__1_16
+    SLICE_X39Y18         LUT6 (Prop_lut6_I1_O)        0.124    30.836 r  proc_inst/regfile/r3/remainder_lt_divisor_carry__0_i_3__6/O
+                         net (fo=1, routed)           0.526    31.362    proc_inst/alu/d0/i7/remainder_lt_divisor_carry_i_8__6[1]
+    SLICE_X40Y18         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.507    31.869 r  proc_inst/alu/d0/i7/remainder_lt_divisor_carry__0/CO[3]
+                         net (fo=58, routed)          1.020    32.889    proc_inst/regfile/r3/VRAM_reg_0_2[0]
+    SLICE_X41Y19         LUT5 (Prop_lut5_I3_O)        0.124    33.013 f  proc_inst/regfile/r3/o_remainder0_carry__2_i_1__7/O
+                         net (fo=5, routed)           0.486    33.499    proc_inst/regfile/r3/o_remainder0_carry__2_6
+    SLICE_X44Y18         LUT6 (Prop_lut6_I1_O)        0.124    33.623 r  proc_inst/regfile/r3/remainder_lt_divisor_carry__0_i_2__7/O
+                         net (fo=1, routed)           0.769    34.392    proc_inst/alu/d0/i8/remainder_lt_divisor_carry_i_8__7[2]
+    SLICE_X41Y14         CARRY4 (Prop_carry4_DI[2]_CO[3])
+                                                      0.398    34.790 r  proc_inst/alu/d0/i8/remainder_lt_divisor_carry__0/CO[3]
+                         net (fo=57, routed)          0.963    35.753    proc_inst/regfile/r3/remainder_lt_divisor_carry_1[0]
+    SLICE_X43Y14         LUT5 (Prop_lut5_I3_O)        0.124    35.877 f  proc_inst/regfile/r3/o_remainder0_carry_i_1__5/O
+                         net (fo=9, routed)           0.608    36.486    proc_inst/regfile/r3/o_remainder0_carry_7
+    SLICE_X40Y12         LUT6 (Prop_lut6_I1_O)        0.124    36.610 r  proc_inst/regfile/r3/remainder_lt_divisor_carry_i_3__8/O
+                         net (fo=1, routed)           0.735    37.345    proc_inst/alu/d0/i9/remainder_lt_divisor_carry__0_0[1]
+    SLICE_X40Y14         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.507    37.852 r  proc_inst/alu/d0/i9/remainder_lt_divisor_carry/CO[3]
+                         net (fo=1, routed)           0.000    37.852    proc_inst/alu/d0/i9/remainder_lt_divisor_carry_n_0
+    SLICE_X40Y15         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    37.966 r  proc_inst/alu/d0/i9/remainder_lt_divisor_carry__0/CO[3]
+                         net (fo=58, routed)          1.276    39.242    proc_inst/regfile/r3/VRAM_reg_0_3[0]
+    SLICE_X39Y16         LUT5 (Prop_lut5_I3_O)        0.124    39.366 f  proc_inst/regfile/r3/o_remainder0_carry__1_i_3__4/O
+                         net (fo=10, routed)          0.328    39.695    proc_inst/regfile/r3/o_remainder0_carry__1_8
+    SLICE_X38Y17         LUT6 (Prop_lut6_I1_O)        0.124    39.819 r  proc_inst/regfile/r3/remainder_lt_divisor_carry__0_i_4__9/O
+                         net (fo=1, routed)           0.693    40.512    proc_inst/alu/d0/i10/remainder_lt_divisor_carry_i_8__9[0]
+    SLICE_X38Y15         CARRY4 (Prop_carry4_DI[0]_CO[3])
+                                                      0.550    41.062 r  proc_inst/alu/d0/i10/remainder_lt_divisor_carry__0/CO[3]
+                         net (fo=60, routed)          1.043    42.105    proc_inst/regfile/r3/remainder_lt_divisor_carry_2[0]
+    SLICE_X38Y16         LUT5 (Prop_lut5_I3_O)        0.124    42.229 f  proc_inst/regfile/r3/o_remainder0_carry__1_i_3__3/O
+                         net (fo=9, routed)           0.501    42.730    proc_inst/regfile/r3/o_remainder0_carry__1_9
+    SLICE_X36Y14         LUT6 (Prop_lut6_I1_O)        0.124    42.854 r  proc_inst/regfile/r3/remainder_lt_divisor_carry__0_i_4__10/O
+                         net (fo=1, routed)           0.472    43.326    proc_inst/alu/d0/i11/remainder_lt_divisor_carry_i_8__10[0]
+    SLICE_X36Y16         CARRY4 (Prop_carry4_DI[0]_CO[3])
+                                                      0.550    43.876 r  proc_inst/alu/d0/i11/remainder_lt_divisor_carry__0/CO[3]
+                         net (fo=60, routed)          0.927    44.803    proc_inst/regfile/r3/remainder_lt_divisor_carry_3[0]
+    SLICE_X35Y16         LUT5 (Prop_lut5_I3_O)        0.124    44.927 f  proc_inst/regfile/r3/o_remainder0_carry__1_i_1__2/O
+                         net (fo=9, routed)           0.615    45.542    proc_inst/regfile/r3/o_remainder0_carry__1_20
+    SLICE_X36Y14         LUT6 (Prop_lut6_I1_O)        0.124    45.666 r  proc_inst/regfile/r3/remainder_lt_divisor_carry__0_i_3__11/O
+                         net (fo=1, routed)           0.651    46.317    proc_inst/alu/d0/i12/remainder_lt_divisor_carry_i_8__11[1]
+    SLICE_X35Y14         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.507    46.824 r  proc_inst/alu/d0/i12/remainder_lt_divisor_carry__0/CO[3]
+                         net (fo=60, routed)          0.920    47.744    proc_inst/regfile/r3/remainder_lt_divisor_carry_4[0]
+    SLICE_X33Y11         LUT5 (Prop_lut5_I3_O)        0.124    47.868 f  proc_inst/regfile/r3/o_remainder0_carry__0_i_3__1/O
+                         net (fo=9, routed)           0.889    48.757    proc_inst/regfile/r3/o_remainder0_carry__0_13
+    SLICE_X31Y14         LUT6 (Prop_lut6_I1_O)        0.124    48.881 r  proc_inst/regfile/r3/remainder_lt_divisor_carry_i_2__12/O
+                         net (fo=1, routed)           0.658    49.539    proc_inst/alu/d0/i13/remainder_lt_divisor_carry__0_0[2]
+    SLICE_X31Y15         CARRY4 (Prop_carry4_DI[2]_CO[3])
+                                                      0.398    49.937 r  proc_inst/alu/d0/i13/remainder_lt_divisor_carry/CO[3]
+                         net (fo=1, routed)           0.000    49.937    proc_inst/alu/d0/i13/remainder_lt_divisor_carry_n_0
+    SLICE_X31Y16         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    50.051 r  proc_inst/alu/d0/i13/remainder_lt_divisor_carry__0/CO[3]
+                         net (fo=65, routed)          1.073    51.124    proc_inst/regfile/r3/remainder_lt_divisor_carry_5[0]
+    SLICE_X29Y14         LUT5 (Prop_lut5_I3_O)        0.124    51.248 f  proc_inst/regfile/r3/o_remainder0_carry__1_i_3__0/O
+                         net (fo=8, routed)           0.825    52.073    proc_inst/regfile/r3/o_remainder0_carry__1_1
+    SLICE_X31Y17         LUT6 (Prop_lut6_I1_O)        0.124    52.197 r  proc_inst/regfile/r3/remainder_lt_divisor_carry__0_i_4__13/O
+                         net (fo=1, routed)           0.379    52.576    proc_inst/alu/d0/i14/remainder_lt_divisor_carry_i_8__13[0]
+    SLICE_X30Y17         CARRY4 (Prop_carry4_DI[0]_CO[3])
+                                                      0.550    53.126 r  proc_inst/alu/d0/i14/remainder_lt_divisor_carry__0/CO[3]
+                         net (fo=59, routed)          1.064    54.190    proc_inst/regfile/r3/VRAM_reg_0_4[0]
+    SLICE_X30Y18         LUT5 (Prop_lut5_I3_O)        0.124    54.314 f  proc_inst/regfile/r3/o_remainder0_carry__2_i_2/O
+                         net (fo=4, routed)           0.574    54.888    proc_inst/regfile/r3/o_remainder0_carry__2
+    SLICE_X28Y19         LUT6 (Prop_lut6_I1_O)        0.124    55.012 r  proc_inst/regfile/r3/remainder_lt_divisor_carry__0_i_2__14/O
+                         net (fo=1, routed)           0.698    55.710    proc_inst/alu/d0/i15/IDRAM_reg_0_0_i_353[2]
+    SLICE_X28Y17         CARRY4 (Prop_carry4_DI[2]_CO[3])
+                                                      0.398    56.108 r  proc_inst/alu/d0/i15/remainder_lt_divisor_carry__0/CO[3]
+                         net (fo=21, routed)          0.857    56.964    proc_inst/regfile/r3/IDRAM_reg_1_4[0]
+    SLICE_X27Y15         LUT5 (Prop_lut5_I3_O)        0.124    57.088 r  proc_inst/regfile/r3/IDRAM_reg_0_0_i_357/O
+                         net (fo=1, routed)           0.430    57.518    proc_inst/regfile/r3/IDRAM_reg_0_0_i_357_n_0
+    SLICE_X25Y15         LUT5 (Prop_lut5_I0_O)        0.124    57.642 r  proc_inst/regfile/r3/IDRAM_reg_0_0_i_237/O
+                         net (fo=1, routed)           0.351    57.993    memory/memory/i1out_reg/IDRAM_reg_1_8_3
+    SLICE_X24Y15         LUT6 (Prop_lut6_I2_O)        0.124    58.117 r  memory/memory/i1out_reg/IDRAM_reg_0_0_i_103/O
+                         net (fo=3, routed)           0.727    58.844    memory/memory/i1out_reg/IDRAM_reg_0_0_i_103_n_0
+    SLICE_X21Y17         LUT5 (Prop_lut5_I4_O)        0.124    58.968 r  memory/memory/i1out_reg/IDRAM_reg_0_0_i_15/O
+                         net (fo=18, routed)          1.293    60.261    memory/memory/i1out_reg/IDRAM_reg_1_5_2[2]
+    SLICE_X34Y17         LUT4 (Prop_lut4_I1_O)        0.124    60.385 r  memory/memory/i1out_reg/state[15]_i_4__0/O
+                         net (fo=2, routed)           0.649    61.035    memory/memory/i1out_reg/state[15]_i_4__0_n_0
+    SLICE_X35Y17         LUT4 (Prop_lut4_I0_O)        0.124    61.159 r  memory/memory/i1out_reg/state[0]_i_3__0/O
+                         net (fo=6, routed)           0.477    61.635    memory/memory/i1out_reg/state[0]_i_3__0_n_0
+    SLICE_X33Y17         LUT6 (Prop_lut6_I4_O)        0.124    61.759 r  memory/memory/i1out_reg/state[15]_i_12__0/O
+                         net (fo=32, routed)          0.908    62.668    timer/counter_reg/state_reg[31]_2
+    SLICE_X32Y10         LUT3 (Prop_lut3_I1_O)        0.124    62.792 r  timer/counter_reg/state[0]_i_8/O
+                         net (fo=1, routed)           0.000    62.792    timer/counter_reg/state[0]_i_8_n_0
+    SLICE_X32Y10         CARRY4 (Prop_carry4_S[1]_CO[3])
+                                                      0.533    63.325 r  timer/counter_reg/state_reg[0]_i_1/CO[3]
+                         net (fo=1, routed)           0.000    63.325    timer/counter_reg/state_reg[0]_i_1_n_0
+    SLICE_X32Y11         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    63.442 r  timer/counter_reg/state_reg[4]_i_1/CO[3]
+                         net (fo=1, routed)           0.000    63.442    timer/counter_reg/state_reg[4]_i_1_n_0
+    SLICE_X32Y12         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    63.559 r  timer/counter_reg/state_reg[8]_i_1/CO[3]
+                         net (fo=1, routed)           0.000    63.559    timer/counter_reg/state_reg[8]_i_1_n_0
+    SLICE_X32Y13         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    63.676 r  timer/counter_reg/state_reg[12]_i_1/CO[3]
+                         net (fo=1, routed)           0.000    63.676    timer/counter_reg/state_reg[12]_i_1_n_0
+    SLICE_X32Y14         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    63.793 r  timer/counter_reg/state_reg[16]_i_1/CO[3]
+                         net (fo=1, routed)           0.000    63.793    timer/counter_reg/state_reg[16]_i_1_n_0
+    SLICE_X32Y15         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    63.910 r  timer/counter_reg/state_reg[20]_i_1/CO[3]
+                         net (fo=1, routed)           0.000    63.910    timer/counter_reg/state_reg[20]_i_1_n_0
+    SLICE_X32Y16         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    64.027 r  timer/counter_reg/state_reg[24]_i_1/CO[3]
+                         net (fo=1, routed)           0.000    64.027    timer/counter_reg/state_reg[24]_i_1_n_0
+    SLICE_X32Y17         CARRY4 (Prop_carry4_CI_O[1])
+                                                      0.323    64.350 r  timer/counter_reg/state_reg[28]_i_1/O[1]
+                         net (fo=1, routed)           0.000    64.350    timer/counter_reg/state_reg[28]_i_1_n_6
+    SLICE_X32Y17         FDRE                                         r  timer/counter_reg/state_reg[29]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk_processor_design_1_clk_wiz_0_0 rise edge)
+                                                     64.000    64.000 r  
+    Y9                                                0.000    64.000 r  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000    64.000    mmcm0/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         1.420    65.420 r  mmcm0/clkin1_ibufg/O
+                         net (fo=1, routed)           1.162    66.582    mmcm0/clk_in1_design_1_clk_wiz_0_0
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                     -7.438    59.144 r  mmcm0/mmcm_adv_inst/CLKOUT0
+                         net (fo=1, routed)           1.691    60.835    mmcm0/clk_processor_design_1_clk_wiz_0_0
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.091    60.926 r  mmcm0/clkout1_buf/O
+                         net (fo=321, routed)         1.484    62.411    timer/counter_reg/clk_processor
+    SLICE_X32Y17         FDRE                                         r  timer/counter_reg/state_reg[29]/C
+                         clock pessimism              0.476    62.887    
+                         clock uncertainty           -0.098    62.788    
+    SLICE_X32Y17         FDRE (Setup_fdre_C_D)        0.109    62.897    timer/counter_reg/state_reg[29]
+  -------------------------------------------------------------------
+                         required time                         62.897    
+                         arrival time                         -64.350    
+  -------------------------------------------------------------------
+                         slack                                 -1.452    
+
+
+
+

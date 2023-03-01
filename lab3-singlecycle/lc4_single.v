@@ -1,4 +1,5 @@
 /* TODO: name and PennKeys of all group members here
+//Names: Charlie Gottlieb cbg613, Keith Bonwitt kbonwitt
  *
  * lc4_single.v
  * Implements a single-cycle data path
@@ -62,11 +63,6 @@ module lc4_processor
    Nbit_reg #(16, 16'h8200) pc_reg (.in(next_pc), .out(pc), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
    /* END DO NOT MODIFY THIS CODE */
-
-
-   /*******************************
-    * TODO: INSERT YOUR CODE HERE *
-    *******************************/
 
     wire [15:0] pc_plus_one;
     cla16 make_pc_plus_one 
@@ -137,8 +133,8 @@ module lc4_processor
    
    // ----  NZP stuff ------
    wire [2:0] nzp_reg_input, nzp_reg_output;
-   assign nzp_reg_input = (alu_output > 0) ? 3'b001 : //P
-                          (alu_output == 0) ? 3'b010 : //Z
+   assign nzp_reg_input = (alu_output == 0) ? 3'b010 : //Z
+                          (alu_output[15] == 0) ? 3'b001 : //P
                           3'b100; //N
 
    Nbit_reg #(.n(3)) nzp_reg 
@@ -165,7 +161,7 @@ module lc4_processor
 
    assign next_pc = is_control_insn || should_branch ? memory_or_alu_output :
                                                        pc_plus_one;
-   assign o_cur_pc = next_pc; //confused about this, not sure if it's 'next_pc' or 'pc'                                
+   assign o_cur_pc = pc; //confused about this, not sure if it's true                                   
    
 
    
@@ -181,7 +177,9 @@ module lc4_processor
    assign test_nzp_we = nzp_we;                 // Testbench: NZP condition codes write enable
    assign test_nzp_new_bits = nzp_reg_input;    // Testbench: value to write to NZP bits
    assign test_dmem_we = o_dmem_we;             // Testbench: data memory write enable
-   assign test_dmem_addr = o_dmem_addr;         // Testbench: address to read/write memory
+   assign test_dmem_addr = is_load ? o_dmem_addr :
+                           is_store ? o_dmem_addr :
+                           16'b0;               // Testbench: address to read/write memory
    assign test_dmem_data = is_load ? i_cur_dmem_data :
                            is_store ? o_dmem_towrite :
                            16'b0;               // Testbench: value read/writen from/to memory
