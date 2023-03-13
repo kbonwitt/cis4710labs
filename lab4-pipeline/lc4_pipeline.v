@@ -1,4 +1,6 @@
 /* TODO: name and PennKeys of all group members here */
+//Charlie Gottlieb : cbg613
+//Keith Bonwitt : kbonwitt
 
 `timescale 1ns / 1ps
 
