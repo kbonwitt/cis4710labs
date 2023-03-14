@@ -4,7 +4,7 @@
 
 
 
-/*THOUGHTS
+/*THOUGHTS & TODOs
    - we should probably have a whole new decoder for EACH stage, not just at start
    - the pc_plus_one wire is only utilized in the W stage, so probably compute it there
    - do we need to propogate the cur_pc through each stage? not certain, have to think about it
@@ -60,26 +60,29 @@ module lc4_processor
    // you desire.
    assign led_data = switch_data;
 
+
+   //  ----****************************************---
+   //  ----************--- F stage ----************---
+   //  ----****************************************---
+
+
    // pc wires attached to the PC register's ports
-   wire [15:0]   pc;      // Current program counter (read out from pc_reg)
+   wire [15:0]   F_pc;      // Current program counter (read out from pc_reg)
    wire [15:0]   next_pc; // Next program counter (you compute this and feed it into next_pc)
+      //note: this will come into play with branch prediction and stalling/flushing
 
-   // Program counter register, starts at 8200h at bootup
-   Nbit_reg #(16, 16'h8200) pc_reg (.in(next_pc), .out(pc), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-
-   wire [15:0] pc_plus_one;
-   cla16 make_pc_plus_one 
-      (.a(pc), .b(16'b1), .cin(1'b0), .sum(pc_plus_one));
+   Nbit_reg #(16, 16'h8200) F_pc_reg (.in(next_pc), .out(F_pc), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    
    //  ----****************************************---
    //  ----************--- D stage ----************---
    //  ----****************************************---
 
    wire [15:0] D_insn, D_pc;
-   Nbit_reg #(16) D_insn_reg (.in(i_cur_insn), .out(D_insn), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-   Nbit_reg #(16) D_pc_reg (.in(pc), .out(D_pc), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(16, 16'h0) D_insn_reg (.in(i_cur_insn), .out(D_insn), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(16, 16'h0) D_pc_reg (.in(pc), .out(D_pc), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
 
+   assign o_cur_pc = D_pc; 
 
    wire [2:0] r1sel, r2sel, rd_sel;
    wire r1re, r2re, regfile_we, nzp_we, select_pc_plus_one, is_load, is_store, is_branch, is_control_insn;
@@ -171,8 +174,8 @@ module lc4_processor
 
 
    // other, idk
-   wire [15:0] memory_or_alu_output;
-   assign memory_or_alu_output = is_load ? W_datamem :
+   wire [15:0] W_memory_or_alu_output;
+   assign W_memory_or_alu_output = is_load ? W_datamem :
                                            W_alu_output;   
 
 
@@ -180,18 +183,21 @@ module lc4_processor
    // probably need to replace wires below with the decoded insn in the W stage
    // right now i guess something like should_branch is technically from all the way back to the D stage above
 
-   //other muxes
-      // including regfile_data and next_pc
-   wire [15:0] pc_plus_one_or_alu_output;
-   assign pc_plus_one_or_alu_output = should_branch ? alu_output :
-                                                      pc_plus_one;
 
-   assign regfile_data_to_write = select_pc_plus_one ? pc_plus_one :
-                                                       memory_or_alu_output;
+   //i can't remember why i had these next two lines in singlecycle. pc_plus_one_or_alu_output goes nowhere...
+   // wire [15:0] pc_plus_one_or_alu_output;
+   // assign pc_plus_one_or_alu_output = should_branch ? alu_output :
+   //                                                    pc_plus_one;
 
-   assign next_pc = is_control_insn || should_branch ? memory_or_alu_output :
-                                                       pc_plus_one;
-   assign o_cur_pc = pc;                                 
+   wire [15:0] W_pc_plus_one;
+   cla16 make_pc_plus_one 
+      (.a(W_pc), .b(16'b1), .cin(1'b0), .sum(W_pc_plus_one));
+
+   assign regfile_data_to_write = select_pc_plus_one ? W_pc_plus_one :
+                                                       W_memory_or_alu_output;
+
+   assign next_pc = is_control_insn || should_branch ? W_memory_or_alu_output :
+                                                       W_pc_plus_one;                                
    
 
    // ----  NZP stuff ------
