@@ -78,8 +78,15 @@ module lc4_processor
    //  ----****************************************---
 
    wire [15:0] D_insn, D_pc;
-   Nbit_reg #(16, 16'h0) D_insn_reg (.in(i_cur_insn), .out(D_insn), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-   Nbit_reg #(16, 16'h0) D_pc_reg (.in(pc), .out(D_pc), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+
+   wire [15:0] new_or_old_insn, new_or_old_pc; //loop back onto yourself if there is a stall
+   assign new_or_old_insn = (stall == 0) ? i_cur_insn :
+                        D_insn;
+   assign new_or_old_pc = (stall == 0) ? F_pc :
+                        D_pc;                      
+   
+   Nbit_reg #(16, 16'h0) D_insn_reg (.in(new_or_old_insn), .out(D_insn), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(16, 16'h0) D_pc_reg (.in(new_or_old_pc), .out(D_pc), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
 
    assign o_cur_pc = D_pc; 
@@ -87,7 +94,11 @@ module lc4_processor
    wire [2:0] D_rs_sel, D_rs_sel, D_rd_sel;
    wire D_r1re, D_r2re, D_regfile_we, D_nzp_we, D_select_pc_plus_one, D_is_load, D_is_store, D_is_branch, D_is_control_insn;
    
-   lc4_decoder D_decoder(.insn(D_insn),               // instruction (in D stage)
+   wire [15:0] insn_or_NOP;
+   assign insn_or_NOP = (stall == 0) ? D_insn :
+                        16'b0; //NOP 
+
+   lc4_decoder D_decoder(.insn(insn_or_NOP),               // instruction (in D stage)
                        .r1sel(D_rs_sel),              // rs
                        .r1re(D_r1re),               // does this instruction read from rs?
                        .r2sel(D_rs_sel),              // rt
@@ -126,6 +137,8 @@ module lc4_processor
 
    //PIPE REGISTERS
    wire [15:0] X_rs_data, X_rt_data, X_insn, X_pc;
+   wire [15:0] insn_or_NOP;
+
    Nbit_reg #(16) X_rs_data_reg (.in(D_rs_data), .out(X_rs_data), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) X_rt_data_reg (.in(D_rt_data), .out(X_rt_data), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) X_insn_reg (.in(D_insn), .out(X_insn), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst)); //will be NOP when stalling
@@ -185,6 +198,8 @@ module lc4_processor
    Nbit_reg #(16) M_insn_reg (.in(X_insn), .out(M_insn), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) M_pc_reg (.in(X_pc), .out(M_pc), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
+   
+
    wire M_rs_sel, M_rt_sel, M_rd_sel;
    Nbit_reg #(3) M_rs_sel_reg (.in(X_rs_sel), .out(M_rs_sel), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(3) M_rt_sel_reg (.in(X_rt_sel), .out(M_rt_sel), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
@@ -218,19 +233,24 @@ module lc4_processor
    //  ----****************************************---
    //  ----************--- W stage ----************---
    //  ----****************************************---
-   wire [15:0] W_datamem;
+   wire [15:0] W_alu_output, W_dmem_data_output, W_insn, W_pc;
    Nbit_reg #(16) W_alu_output_reg (.in(M_alu_output), .out(W_alu_output), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-   Nbit_reg #(16) W_datamem_reg (.in(i_cur_dmem_data), .out(W_datamem), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(16) W_datamem_reg (.in(i_cur_dmem_data), .out(W_dmem_data_output), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) W_insn_reg (.in(M_insn), .out(W_insn), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) W_pc_reg (.in(M_pc), .out(W_pc), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+
+   wire [15:0] W_dmem_data_input;
+   Nbit_reg #(16) W_dmem_data_reg (.in(M_dmem_data_bypass_mux3), .out(W_dmem_data_input), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
    wire W_rd_sel;
    Nbit_reg #(3) W_rd_sel_reg (.in(M_rd_sel), .out(W_rd_sel), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
-   wire W_regfile_we, W_nzp_we, W_select_pc_plus_one;
+   wire W_regfile_we, W_nzp_we, W_select_pc_plus_one, W_dmem_we;
    Nbit_reg #(1) W_regfile_we_reg (.in(M_regfile_we), .out(W_regfile_we), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(1) W_nzp_we_reg (.in(M_nzp_we), .out(W_nzp_we), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(1) W_pc_plus_one_reg (.in(M_select_pc_plus_one), .out(W_select_pc_plus_one), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(1) W_dmem_we_reg (.in(M_is_store), .out(W_dmem_we), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+
    
    wire W_is_load, W_is_branch, W_is_store, W_is_control_insn;
    Nbit_reg #(1) W_is_load_reg (.in(M_is_load), .out(W_is_load), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
@@ -262,8 +282,9 @@ module lc4_processor
    assign W_regfile_data_to_write = W_select_pc_plus_one ? W_pc_plus_one :
                                                        W_memory_or_alu_output;
 
-   assign next_pc = W_is_control_insn || W_should_branch ? W_memory_or_alu_output :
-                                                       W_pc_plus_one;                                
+   assign next_pc = stall != 0 ? F_pc ?
+                     W_is_control_insn || W_should_branch ? W_memory_or_alu_output :
+                     W_pc_plus_one;                                
    
 
    // ----  NZP stuff ------
@@ -283,28 +304,37 @@ module lc4_processor
    assign should_branch = is_branch && ( |nzp_and_insn_11_9 ); 
       //'should_branch' is true when is_branch is active AND at least one bit matches between the insn[11:9] and NZP bits
 
+
+
+   //STALL LOGIC
+
+   //question to think about: on the slides, there is a connection from M to should_stall. Is this real and if so when?
+   // also, do we need to ensure that the thing after LDR is in X when LDR is in W?
+   wire stall;
+   assign stall = X_is_load && (X_rd_sel == D_rs_sel || X_rd_sel == D_rt_sel || D_is_branch) ? 2'b11 :
+                                 2'b00
+   
    
    
    
    // ---- TEST WIRES -----
    
-   assign test_cur_pc = o_cur_pc;                // Testbench: program counter
-   assign test_cur_insn = i_cur_insn;           // Testbench: instruction bits
-   assign test_regfile_we = regfile_we;       // Testbench: register file write enable
-   assign test_regfile_wsel = rd_sel;           // Testbench: which register to write in the register file 
-   assign test_regfile_data = regfile_data_to_write; // Testbench: value to write into the register file
-   assign test_nzp_we = nzp_we;                 // Testbench: NZP condition codes write enable
+   assign test_cur_pc = W_pc;                // Testbench: program counter
+   assign test_cur_insn = W_insn;           // Testbench: instruction bits
+   assign test_regfile_we = W_regfile_we;       // Testbench: register file write enable
+   assign test_regfile_wsel = W_rd_sel;           // Testbench: which register to write in the register file 
+   assign test_regfile_data = W_regfile_data_to_write; // Testbench: value to write into the register file
+   assign test_nzp_we = W_nzp_we;                 // Testbench: NZP condition codes write enable
    assign test_nzp_new_bits = nzp_reg_input;    // Testbench: value to write to NZP bits
-   assign test_dmem_we = o_dmem_we;             // Testbench: data memory write enable
-   assign test_dmem_addr = is_load ? o_dmem_addr :
-                           is_store ? o_dmem_addr :
+   assign test_dmem_we = W_dmem_we;             // Testbench: data memory write enable
+   assign test_dmem_addr = is_load || is_store ? W_dmem_addr :
                            16'b0;               // Testbench: address to read/write memory
-   assign test_dmem_data = is_load ? i_cur_dmem_data :
-                           is_store ? o_dmem_towrite :
+   assign test_dmem_data = is_load ? W_dmem_data_output :
+                           is_store ? W_dmem_data_input :
                            16'b0;               // Testbench: value read/writen from/to memory
    
    //***TODO***
-   assign test_stall = 1'b0;        
+   assign test_stall = stall;        
 
 
 
