@@ -79,14 +79,14 @@ module lc4_processor
 
    wire [15:0] D_insn, D_pc;
 
-   wire [15:0] new_or_old_insn, new_or_old_pc; //loop back onto yourself if there is a stall
-   assign new_or_old_insn = (stall == 0) ? i_cur_insn :
-                        D_insn;
-   assign new_or_old_pc = (stall == 0) ? F_pc :
-                        D_pc;                      
+   // wire [15:0] new_or_old_insn, new_or_old_pc; //loop back onto yourself if there is a stall
+   // assign new_or_old_insn = i_cur_insn;
+   // //(stall == 0) ? i_cur_insn :  D_insn;
+   // assign new_or_old_pc = (stall == 0) ? F_pc :
+   //                      D_pc;                      
    
-   Nbit_reg #(16, 16'h0) D_insn_reg (.in(new_or_old_insn), .out(D_insn), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-   Nbit_reg #(16, 16'h0) D_pc_reg (.in(new_or_old_pc), .out(D_pc), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(16) D_insn_reg (.in(i_cur_insn), .out(D_insn), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(16) D_pc_reg (.in(F_pc), .out(D_pc), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
 
    assign o_cur_pc = D_pc; 
@@ -94,11 +94,11 @@ module lc4_processor
    wire [2:0] D_rs_sel, D_rt_sel, D_rd_sel;
    wire D_r1re, D_r2re, D_regfile_we, D_nzp_we, D_select_pc_plus_one, D_is_load, D_is_store, D_is_branch, D_is_control_insn;
    
-   wire [15:0] insn_or_NOP;
-   assign insn_or_NOP = (stall == 0) ? D_insn :
-                        16'b0; //NOP 
+   // wire [15:0] insn_or_NOP;
+   // assign insn_or_NOP = (stall == 0) ? D_insn :
+   //                      16'b0; //NOP 
 
-   lc4_decoder D_decoder(.insn(insn_or_NOP),               // instruction (in D stage)
+   lc4_decoder D_decoder(.insn(D_insn),               // instruction (in D stage)
                        .r1sel(D_rs_sel),              // rs
                        .r1re(D_r1re),               // does this instruction read from rs?
                        .r2sel(D_rs_sel),              // rt
@@ -125,7 +125,7 @@ module lc4_processor
          (.clk(clk), .gwe(gwe), .rst(rst), 
          .i_rs(D_rs_sel), .o_rs_data(D_rs_data), 
          .i_rt(D_rt_sel), .o_rt_data(D_rt_data), 
-         .i_rd(D_rd_sel), .i_wdata(W_regfile_data_to_write), .i_rd_we(W_regfile_we)
+         .i_rd(W_rd_sel), .i_wdata(W_regfile_data_to_write), .i_rd_we(W_regfile_we)
          );
    
 
@@ -220,6 +220,7 @@ module lc4_processor
    wire [15:0] M_dmem_data_bypass_mux3;
    assign M_dmem_data_bypass_mux3 = (M_is_store && M_rt_sel == W_rd_sel) ? W_memory_or_alu_output :
                                     M_rt_data;
+                                    
 
 
    assign o_dmem_we = M_is_store;
@@ -282,10 +283,13 @@ module lc4_processor
 
    assign W_regfile_data_to_write = W_select_pc_plus_one ? W_pc_plus_one :
                                                        W_memory_or_alu_output;
+   wire [15:0] F_pc_plus_one;
+   cla16 pc_plus_one (.a(F_pc), .b(16'b1), .cin(1'b0), .sum(F_pc_plus_one));
 
-   assign next_pc = stall != 0 ? F_pc :
-                     W_is_control_insn || should_branch ? W_memory_or_alu_output :
-                     W_pc_plus_one;                                
+   assign next_pc = F_pc_plus_one;
+   // stall != 0 ? F_pc :
+   //                   W_is_control_insn || should_branch ? W_memory_or_alu_output :
+   //                   W_pc_plus_one;                                
    
 
    // ----  NZP stuff ------
@@ -311,9 +315,14 @@ module lc4_processor
 
    //question to think about: on the slides, there is a connection from M to should_stall. Is this real and if so when?
    // also, do we need to ensure that the thing after LDR is in X when LDR is in W?
-   wire stall;
-   assign stall = X_is_load && (X_rd_sel == D_rs_sel || X_rd_sel == D_rt_sel || D_is_branch) ? 2'b11 :
-                                 2'b00;
+   wire [1:0] F_stall, D_stall, X_stall, M_stall, W_stall;
+   assign F_stall = 2'b0;
+   // X_is_load && (X_rd_sel == D_rs_sel || X_rd_sel == D_rt_sel || D_is_branch) ? 2'b11 : 2'b00;
+   // For the next section: create stall registers so that you carry dstall into writeback and set test_stall=wstall
+   Nbit_reg #(2, 2'd2) dstall (.in(F_stall), .out(D_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(2, 2'd2) xstall (.in(D_stall), .out(X_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(2, 2'd2) mstall (.in(X_stall), .out(M_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(2, 2'd2) wstall (.in(M_stall), .out(W_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    
    
    
@@ -328,14 +337,15 @@ module lc4_processor
    assign test_nzp_we = W_nzp_we;                 // Testbench: NZP condition codes write enable
    assign test_nzp_new_bits = nzp_reg_input;    // Testbench: value to write to NZP bits
    assign test_dmem_we = W_dmem_we;             // Testbench: data memory write enable
-   assign test_dmem_addr = W_is_load || W_is_store ? W_dmem_addr :
+   assign test_dmem_addr = (W_is_load || W_is_store) ? W_dmem_addr :
                            16'b0;               // Testbench: address to read/write memory
-   assign test_dmem_data = W_is_load ? W_dmem_data_output :
-                           W_is_store ? W_dmem_data_input :
+   assign test_dmem_data = (W_is_load) ? W_dmem_data_output :
+                           (W_is_store) ? W_dmem_data_input :
                            16'b0;               // Testbench: value read/writen from/to memory
    
    //***TODO***
-   assign test_stall = stall;        
+   assign test_stall = (W_insn == 16'b0) ? 2'b10 : 2'b0; 
+   // W_stall;        
 
 
 
@@ -355,6 +365,14 @@ module lc4_processor
     */
 `ifndef NDEBUG
    always @(posedge gwe) begin
+      if (1) begin
+         $display("--------------------");
+         $display("f_pc: %h, i_cur_insn: %h", F_pc, i_cur_insn);
+         $display("d_pc: %h | r%d: %h | r%d: %h", D_pc, D_rs_sel, D_rs_data, D_rt_sel, D_rt_data);
+         $display("x_pc: %h | alu1: %h | alu2: %h | alu_out: %h", X_pc, X_rs_bypass_val_mux1, X_rt_bypass_val_mux2, X_alu_output);
+         $display("m_pc: %h", M_pc);
+         $display("w_pc: %h | w_insn: %h | writing to r%d | wdata: %h | regfile_we: %b", W_pc, W_insn, W_rd_sel, W_regfile_data_to_write, W_regfile_we);
+      end
       // $display("%d %h %h %h %h %h", $time, f_pc, d_pc, e_pc, m_pc, test_cur_pc);
       // if (o_dmem_we)
       //   $display("%d STORE %h <= %h", $time, o_dmem_addr, o_dmem_towrite);
@@ -366,7 +384,7 @@ module lc4_processor
       // $display("%d ...", $time);
 
       // Try adding a $display() call that prints out the PCs of
-      // each pipeline stage in hex.  Then you can easily look up the
+      // each pipeline stage in hex.  Then youDcan easily look up the
       // instructions in the .asm files in test_data.
 
       // basic if syntax:
