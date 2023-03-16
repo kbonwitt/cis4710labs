@@ -91,7 +91,7 @@ module lc4_processor
 
    assign o_cur_pc = D_pc; 
 
-   wire [2:0] D_rs_sel, D_rs_sel, D_rd_sel;
+   wire [2:0] D_rs_sel, D_rt_sel, D_rd_sel;
    wire D_r1re, D_r2re, D_regfile_we, D_nzp_we, D_select_pc_plus_one, D_is_load, D_is_store, D_is_branch, D_is_control_insn;
    
    wire [15:0] insn_or_NOP;
@@ -120,13 +120,12 @@ module lc4_processor
 
    wire [15:0] D_rs_data, D_rt_data;
    wire [15:0] W_regfile_data_to_write;
-   wire W_regfile_we;
 
    lc4_regfile #(.n(16)) regfile 
          (.clk(clk), .gwe(gwe), .rst(rst), 
-         .i_rs(r1sel), .o_rs_data(D_rs_data), 
-         .i_rt(r2sel), .o_rt_data(D_rt_data), 
-         .i_rd(rd_sel), .i_wdata(W_regfile_data_to_write), .i_rd_we(W_regfile_we)
+         .i_rs(D_rs_sel), .o_rs_data(D_rs_data), 
+         .i_rt(D_rt_sel), .o_rt_data(D_rt_data), 
+         .i_rd(D_rd_sel), .i_wdata(W_regfile_data_to_write), .i_rd_we(W_regfile_we)
          );
    
 
@@ -137,14 +136,13 @@ module lc4_processor
 
    //PIPE REGISTERS
    wire [15:0] X_rs_data, X_rt_data, X_insn, X_pc;
-   wire [15:0] insn_or_NOP;
 
    Nbit_reg #(16) X_rs_data_reg (.in(D_rs_data), .out(X_rs_data), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) X_rt_data_reg (.in(D_rt_data), .out(X_rt_data), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) X_insn_reg (.in(D_insn), .out(X_insn), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst)); //will be NOP when stalling
    Nbit_reg #(16) X_pc_reg (.in(D_pc), .out(X_pc), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));       //will be 000 when stalling
 
-   wire X_rs_sel, X_rt_sel, X_rd_sel;
+   wire [2:0] X_rs_sel, X_rt_sel, X_rd_sel;
    Nbit_reg #(3) X_rs_sel_reg (.in(D_rs_sel), .out(X_rs_sel), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(3) X_rt_sel_reg (.in(D_rt_sel), .out(X_rt_sel), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(3) X_rd_sel_reg (.in(D_rd_sel), .out(X_rd_sel), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
@@ -200,7 +198,7 @@ module lc4_processor
 
    
 
-   wire M_rs_sel, M_rt_sel, M_rd_sel;
+   wire [2:0] M_rs_sel, M_rt_sel, M_rd_sel;
    Nbit_reg #(3) M_rs_sel_reg (.in(X_rs_sel), .out(M_rs_sel), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(3) M_rt_sel_reg (.in(X_rt_sel), .out(M_rt_sel), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(3) M_rd_sel_reg (.in(X_rd_sel), .out(M_rd_sel), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
@@ -242,7 +240,10 @@ module lc4_processor
    wire [15:0] W_dmem_data_input;
    Nbit_reg #(16) W_dmem_data_reg (.in(M_dmem_data_bypass_mux3), .out(W_dmem_data_input), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
-   wire W_rd_sel;
+   wire [15:0] W_dmem_addr;
+   Nbit_reg #(16) W_dmem_addr_reg (.in(M_alu_output), .out(W_dmem_addr), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+
+   wire [2:0] W_rd_sel;
    Nbit_reg #(3) W_rd_sel_reg (.in(M_rd_sel), .out(W_rd_sel), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
    wire W_regfile_we, W_nzp_we, W_select_pc_plus_one, W_dmem_we;
@@ -261,7 +262,7 @@ module lc4_processor
 
    // other, idk
    wire [15:0] W_memory_or_alu_output;
-   assign W_memory_or_alu_output = is_load ? W_datamem :
+   assign W_memory_or_alu_output = W_is_load ? W_dmem_data_output :
                                            W_alu_output;   
 
 
@@ -282,8 +283,8 @@ module lc4_processor
    assign W_regfile_data_to_write = W_select_pc_plus_one ? W_pc_plus_one :
                                                        W_memory_or_alu_output;
 
-   assign next_pc = stall != 0 ? F_pc ?
-                     W_is_control_insn || W_should_branch ? W_memory_or_alu_output :
+   assign next_pc = stall != 0 ? F_pc :
+                     W_is_control_insn || should_branch ? W_memory_or_alu_output :
                      W_pc_plus_one;                                
    
 
@@ -295,13 +296,13 @@ module lc4_processor
 
    Nbit_reg #(.n(3)) nzp_reg 
       (.in(nzp_reg_input), .out(nzp_reg_output),
-      .clk(clk), .we(nzp_we), .gwe(gwe), .rst(rst));
+      .clk(clk), .we(W_nzp_we), .gwe(gwe), .rst(rst));
    
    wire [2:0] nzp_and_insn_11_9; //used just as an intermediate to calculate 'should_branch'
    assign nzp_and_insn_11_9 = nzp_reg_output & i_cur_insn[11:9]; //bitwise AND
 
    wire should_branch;
-   assign should_branch = is_branch && ( |nzp_and_insn_11_9 ); 
+   assign should_branch = W_is_branch && ( |nzp_and_insn_11_9 ); 
       //'should_branch' is true when is_branch is active AND at least one bit matches between the insn[11:9] and NZP bits
 
 
@@ -312,7 +313,7 @@ module lc4_processor
    // also, do we need to ensure that the thing after LDR is in X when LDR is in W?
    wire stall;
    assign stall = X_is_load && (X_rd_sel == D_rs_sel || X_rd_sel == D_rt_sel || D_is_branch) ? 2'b11 :
-                                 2'b00
+                                 2'b00;
    
    
    
@@ -327,10 +328,10 @@ module lc4_processor
    assign test_nzp_we = W_nzp_we;                 // Testbench: NZP condition codes write enable
    assign test_nzp_new_bits = nzp_reg_input;    // Testbench: value to write to NZP bits
    assign test_dmem_we = W_dmem_we;             // Testbench: data memory write enable
-   assign test_dmem_addr = is_load || is_store ? W_dmem_addr :
+   assign test_dmem_addr = W_is_load || W_is_store ? W_dmem_addr :
                            16'b0;               // Testbench: address to read/write memory
-   assign test_dmem_data = is_load ? W_dmem_data_output :
-                           is_store ? W_dmem_data_input :
+   assign test_dmem_data = W_is_load ? W_dmem_data_output :
+                           W_is_store ? W_dmem_data_input :
                            16'b0;               // Testbench: value read/writen from/to memory
    
    //***TODO***
