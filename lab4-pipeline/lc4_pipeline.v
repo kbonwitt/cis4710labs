@@ -4,17 +4,8 @@
 
 
 
-/*THOUGHTS & TODOs
-   - we should probably have a whole new decoder for EACH stage, not just at start
-   - the pc_plus_one wire is only utilized in the W stage, so probably compute it there
-   - do we need to propogate the cur_pc through each stage? not certain, have to think about it
-   - definitely need to comb through all wire stuff (like in 'other muxes' in W)
-      to rename all wires to have W_, D_, etc prefixes, since this was copy-pasted from the 
-      singlecycle file. Do NOT assume anything works until every line is checked for this.
-   - haven't started implementing:
-      - stall logic (when it happens and what it does, like NOPing and holding the PC)
-      - branch prediction stuff (might not be necessary until part b, bc part a is just ALU insns)
-      - bypasses
+/*For part (b)
+   -test_dmem_we and _addr and _data 
 
 */
 
@@ -89,7 +80,7 @@ module lc4_processor
    Nbit_reg #(16) D_pc_reg (.in(F_pc), .out(D_pc), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
 
-   assign o_cur_pc = D_pc; 
+   assign o_cur_pc = F_pc; 
 
    wire [2:0] D_rs_sel, D_rt_sel, D_rd_sel;
    wire D_r1re, D_r2re, D_regfile_we, D_nzp_we, D_select_pc_plus_one, D_is_load, D_is_store, D_is_branch, D_is_control_insn;
@@ -101,7 +92,7 @@ module lc4_processor
    lc4_decoder D_decoder(.insn(D_insn),               // instruction (in D stage)
                        .r1sel(D_rs_sel),              // rs
                        .r1re(D_r1re),               // does this instruction read from rs?
-                       .r2sel(D_rs_sel),              // rt
+                       .r2sel(D_rt_sel),              // rt
                        .r2re(D_r2re),               // does this instruction read from rt?
                        .wsel(D_rd_sel),               // rd
                        .regfile_we(D_regfile_we),         // does this instruction write to rd?
@@ -118,16 +109,20 @@ module lc4_processor
 
    // ---- Regfile stuff ----
 
-   wire [15:0] D_rs_data, D_rt_data;
+   wire [15:0] D_rs_data, D_rt_data, D_rs_data_tmp, D_rt_data_tmp;
    wire [15:0] W_regfile_data_to_write;
 
    lc4_regfile #(.n(16)) regfile 
          (.clk(clk), .gwe(gwe), .rst(rst), 
-         .i_rs(D_rs_sel), .o_rs_data(D_rs_data), 
-         .i_rt(D_rt_sel), .o_rt_data(D_rt_data), 
+         .i_rs(D_rs_sel), .o_rs_data(D_rs_data_tmp), 
+         .i_rt(D_rt_sel), .o_rt_data(D_rt_data_tmp), 
          .i_rd(W_rd_sel), .i_wdata(W_regfile_data_to_write), .i_rd_we(W_regfile_we)
          );
    
+   assign D_rs_data = (W_rd_sel == D_rs_sel & W_regfile_we) ? W_regfile_data_to_write : 
+                        D_rs_data_tmp; // WD Bypass
+   assign D_rt_data = (W_rd_sel == D_rt_sel & W_regfile_we) ? W_regfile_data_to_write : 
+                        D_rt_data_tmp; // WD Bypass
 
    //  ----****************************************---
    //  ----************--- X stage ----************---
@@ -169,18 +164,20 @@ module lc4_processor
    wire [15:0] X_alu_output;
 
    wire [15:0] X_rs_bypass_val_mux1, X_rt_bypass_val_mux2;
-   assign X_rs_bypass_val_mux1 = X_rs_sel == M_rd_sel ? M_alu_output :
-                       X_rs_sel == W_rd_sel ? W_memory_or_alu_output :
-                       X_rs_data;
+   assign X_rs_bypass_val_mux1 = 
+         (X_rs_sel == M_rd_sel & M_regfile_we) ? M_alu_output : // MX Bypass
+         (X_rs_sel == W_rd_sel & W_regfile_we)? W_memory_or_alu_output : // WX Bypass
+         X_rs_data;
 
-   assign X_rt_bypass_val_mux2 = X_rt_sel == M_rd_sel ? M_alu_output :
-                       X_rt_sel == W_rd_sel ? W_memory_or_alu_output :
-                       X_rt_data;
+   assign X_rt_bypass_val_mux2 = 
+         (X_rt_sel == M_rd_sel & M_regfile_we) ? M_alu_output : // MX Bypass
+         (X_rt_sel == W_rd_sel & W_regfile_we) ? W_memory_or_alu_output : // WX Bypass
+         X_rt_data;
 
 
    lc4_alu alu 
-      (.i_insn(X_rs_bypass_val_mux1), .i_pc(X_pc),
-      .i_r1data(X_rt_bypass_val_mux2), .i_r2data(X_rt_data),
+      (.i_insn(X_insn), .i_pc(X_pc),
+      .i_r1data(X_rs_bypass_val_mux1), .i_r2data(X_rt_bypass_val_mux2),
       .o_result(X_alu_output)
       );
    
@@ -223,9 +220,9 @@ module lc4_processor
                                     
 
 
-   assign o_dmem_we = M_is_store;
-   assign o_dmem_addr = M_alu_output;
-   assign o_dmem_towrite = M_dmem_data_bypass_mux3;
+   assign o_dmem_we = 16'b0;//M_is_store;
+   assign o_dmem_addr = 16'b0;//(M_is_load || M_is_store) ? M_alu_output : 16'b0;
+   assign o_dmem_towrite = 16'b0;//(M_is_store) ? M_dmem_data_bypass_mux3 : 16'b0;
 
 
 
@@ -336,12 +333,12 @@ module lc4_processor
    assign test_regfile_data = W_regfile_data_to_write; // Testbench: value to write into the register file
    assign test_nzp_we = W_nzp_we;                 // Testbench: NZP condition codes write enable
    assign test_nzp_new_bits = nzp_reg_input;    // Testbench: value to write to NZP bits
-   assign test_dmem_we = W_dmem_we;             // Testbench: data memory write enable
-   assign test_dmem_addr = (W_is_load || W_is_store) ? W_dmem_addr :
-                           16'b0;               // Testbench: address to read/write memory
-   assign test_dmem_data = (W_is_load) ? W_dmem_data_output :
-                           (W_is_store) ? W_dmem_data_input :
-                           16'b0;               // Testbench: value read/writen from/to memory
+   assign test_dmem_we = 16'b0;//W_dmem_we;             // Testbench: data memory write enable
+   assign test_dmem_addr = 16'b0;//(W_is_load || W_is_store) ? W_dmem_addr :
+                           //16'b0;               // Testbench: address to read/write memory
+   assign test_dmem_data = 16'b0;//(W_is_load) ? W_dmem_data_output :
+                           //(W_is_store) ? W_dmem_data_input :
+                           //16'b0;               // Testbench: value read/writen from/to memory
    
    //***TODO***
    assign test_stall = (W_insn == 16'b0) ? 2'b10 : 2'b0; 
@@ -365,13 +362,14 @@ module lc4_processor
     */
 `ifndef NDEBUG
    always @(posedge gwe) begin
-      if (1) begin
+      if (0) begin
          $display("--------------------");
          $display("f_pc: %h, i_cur_insn: %h", F_pc, i_cur_insn);
          $display("d_pc: %h | r%d: %h | r%d: %h", D_pc, D_rs_sel, D_rs_data, D_rt_sel, D_rt_data);
          $display("x_pc: %h | alu1: %h | alu2: %h | alu_out: %h", X_pc, X_rs_bypass_val_mux1, X_rt_bypass_val_mux2, X_alu_output);
-         $display("m_pc: %h", M_pc);
-         $display("w_pc: %h | w_insn: %h | writing to r%d | wdata: %h | regfile_we: %b", W_pc, W_insn, W_rd_sel, W_regfile_data_to_write, W_regfile_we);
+         $display("m_pc: %h | dmem_addr: %h | dmem_we: %b | dmem_data: %h", M_pc, o_dmem_addr, o_dmem_we, o_dmem_towrite);
+         $display("w_pc: %h | w_insn: %h | writing to r%d | wdata: %h | regfile_we: %b | dmem_addr: %h | dmem_we: %b | dmem_data: %h", 
+            W_pc, W_insn, W_rd_sel, W_regfile_data_to_write, W_regfile_we, W_dmem_addr, W_dmem_we, test_dmem_data);
       end
       // $display("%d %h %h %h %h %h", $time, f_pc, d_pc, e_pc, m_pc, test_cur_pc);
       // if (o_dmem_we)
@@ -419,3 +417,4 @@ module lc4_processor
    end
 `endif
 endmodule
+
