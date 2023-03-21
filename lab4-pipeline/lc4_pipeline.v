@@ -4,8 +4,17 @@
 
 
 
-/*For part (b)
-   -test_dmem_we and _addr and _data 
+/*THOUGHTS & TODOs
+   - we should probably have a whole new decoder for EACH stage, not just at start
+   - the pc_plus_one wire is only utilized in the W stage, so probably compute it there
+   - do we need to propogate the cur_pc through each stage? not certain, have to think about it
+   - definitely need to comb through all wire stuff (like in 'other muxes' in W)
+      to rename all wires to have W_, D_, etc prefixes, since this was copy-pasted from the 
+      singlecycle file. Do NOT assume anything works until every line is checked for this.
+   - haven't started implementing:
+      - stall logic (when it happens and what it does, like NOPing and holding the PC)
+      - branch prediction stuff (might not be necessary until part b, bc part a is just ALU insns)
+      - bypasses
 
 */
 
@@ -220,9 +229,9 @@ module lc4_processor
                                     
 
 
-   assign o_dmem_we = 16'b0;//M_is_store;
-   assign o_dmem_addr = 16'b0;//(M_is_load || M_is_store) ? M_alu_output : 16'b0;
-   assign o_dmem_towrite = 16'b0;//(M_is_store) ? M_dmem_data_bypass_mux3 : 16'b0;
+   assign o_dmem_we = M_is_store;
+   assign o_dmem_addr = (M_is_load || M_is_store) ? M_alu_output : 16'b0;
+   assign o_dmem_towrite = (M_is_store) ? M_dmem_data_bypass_mux3 : 16'b0;
 
 
 
@@ -251,11 +260,13 @@ module lc4_processor
    Nbit_reg #(1) W_dmem_we_reg (.in(M_is_store), .out(W_dmem_we), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
    
-   wire W_is_load, W_is_branch, W_is_store, W_is_control_insn;
+   wire W_is_load, W_is_branch, W_is_control_insn;
    Nbit_reg #(1) W_is_load_reg (.in(M_is_load), .out(W_is_load), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(1) W_is_branch_reg (.in(M_is_branch), .out(W_is_branch), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(1) W_is_control_insn_reg (.in(M_is_control_insn), .out(W_is_control_insn), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    
+   wire W_is_store;
+   assign W_is_store = W_dmem_we; //I know this is unecessary but helps with naming convention
 
 
    // other, idk
@@ -333,12 +344,12 @@ module lc4_processor
    assign test_regfile_data = W_regfile_data_to_write; // Testbench: value to write into the register file
    assign test_nzp_we = W_nzp_we;                 // Testbench: NZP condition codes write enable
    assign test_nzp_new_bits = nzp_reg_input;    // Testbench: value to write to NZP bits
-   assign test_dmem_we = 16'b0;//W_dmem_we;             // Testbench: data memory write enable
-   assign test_dmem_addr = 16'b0;//(W_is_load || W_is_store) ? W_dmem_addr :
-                           //16'b0;               // Testbench: address to read/write memory
-   assign test_dmem_data = 16'b0;//(W_is_load) ? W_dmem_data_output :
-                           //(W_is_store) ? W_dmem_data_input :
-                           //16'b0;               // Testbench: value read/writen from/to memory
+   assign test_dmem_we = W_dmem_we;             // Testbench: data memory write enable
+   assign test_dmem_addr = (W_is_load || W_is_store) ? W_dmem_addr :
+                           16'b0;               // Testbench: address to read/write memory
+   assign test_dmem_data = (W_is_load) ? W_dmem_data_output :
+                           (W_is_store) ? W_dmem_data_input :
+                           16'b0;               // Testbench: value read/writen from/to memory
    
    //***TODO***
    assign test_stall = (W_insn == 16'b0) ? 2'b10 : 2'b0; 
@@ -362,14 +373,14 @@ module lc4_processor
     */
 `ifndef NDEBUG
    always @(posedge gwe) begin
-      if (0) begin
+      if (1) begin
          $display("--------------------");
          $display("f_pc: %h, i_cur_insn: %h", F_pc, i_cur_insn);
          $display("d_pc: %h | r%d: %h | r%d: %h", D_pc, D_rs_sel, D_rs_data, D_rt_sel, D_rt_data);
          $display("x_pc: %h | alu1: %h | alu2: %h | alu_out: %h", X_pc, X_rs_bypass_val_mux1, X_rt_bypass_val_mux2, X_alu_output);
          $display("m_pc: %h | dmem_addr: %h | dmem_we: %b | dmem_data: %h", M_pc, o_dmem_addr, o_dmem_we, o_dmem_towrite);
-         $display("w_pc: %h | w_insn: %h | writing to r%d | wdata: %h | regfile_we: %b | dmem_addr: %h | dmem_we: %b | dmem_data: %h", 
-            W_pc, W_insn, W_rd_sel, W_regfile_data_to_write, W_regfile_we, W_dmem_addr, W_dmem_we, test_dmem_data);
+         $display("w_pc: %h | w_insn: %h | writing to r%d | wdata: %h | regfile_we: %b | dmem_addr: %h | dmem_we: %b | dmem_data: %h | is_load: %b | is_store: %b", 
+            W_pc, W_insn, W_rd_sel, W_regfile_data_to_write, W_regfile_we, W_dmem_addr, W_dmem_we, test_dmem_data, W_is_load, W_is_store);
       end
       // $display("%d %h %h %h %h %h", $time, f_pc, d_pc, e_pc, m_pc, test_cur_pc);
       // if (o_dmem_we)
@@ -417,4 +428,3 @@ module lc4_processor
    end
 `endif
 endmodule
-
