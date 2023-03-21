@@ -83,10 +83,15 @@ module lc4_processor
    // assign new_or_old_insn = i_cur_insn;
    // //(stall == 0) ? i_cur_insn :  D_insn;
    // assign new_or_old_pc = (stall == 0) ? F_pc :
-   //                      D_pc;                      
+   //                      D_pc; 
+
+   wire D_read_new;
+   assign D_read_new = (stall == 0);
+      //this is for write enable for the regs below. If there is no stall, WE=1 so get next INSN/PC from F.
+         //if there IS a stall, WE=0, so just 'keep' what you have now.                     
    
-   Nbit_reg #(16) D_insn_reg (.in(i_cur_insn), .out(D_insn), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-   Nbit_reg #(16) D_pc_reg (.in(F_pc), .out(D_pc), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(16) D_insn_reg (.in(i_cur_insn), .out(D_insn), .clk(clk), .we(D_read_new), .gwe(gwe), .rst(rst));
+   Nbit_reg #(16) D_pc_reg (.in(F_pc), .out(D_pc), .clk(clk), .we(D_read_new), .gwe(gwe), .rst(rst));
 
 
    assign o_cur_pc = F_pc; 
@@ -112,9 +117,6 @@ module lc4_processor
                        .is_branch(D_is_branch),          // is this a branch instruction?
                        .is_control_insn(D_is_control_insn)     // is this a control instruction (JSR, JSRR, RTI, JMPR, JMP, TRAP)?
                    );
-                   //to think about: should all of these change with each insn in the pipeline?
-                   // the INSN is pushed to each stage in the pipeline. Should we have a decoder 
-                   // at each stage, so we have the correct value for each wire at a particular stage?
 
    // ---- Regfile stuff ----
 
