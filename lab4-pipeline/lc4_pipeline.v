@@ -5,17 +5,32 @@
 
 
 /*THOUGHTS & TODOs
-   - we should probably have a whole new decoder for EACH stage, not just at start
-   - the pc_plus_one wire is only utilized in the W stage, so probably compute it there
-   - do we need to propogate the cur_pc through each stage? not certain, have to think about it
-   - definitely need to comb through all wire stuff (like in 'other muxes' in W)
-      to rename all wires to have W_, D_, etc prefixes, since this was copy-pasted from the 
-      singlecycle file. Do NOT assume anything works until every line is checked for this.
-   - haven't started implementing:
-      - stall logic (when it happens and what it does, like NOPing and holding the PC)
-      - branch prediction stuff (might not be necessary until part b, bc part a is just ALU insns)
-      - bypasses
+   - Load-To-Use stall
+      - Implemented: 
+         - if ldr_stall, will change X_stall to 3
+      - Need to implement:
+         1. Put NOP into X on ldr_stall, meaning set X_insn to 16'b0
+            (IMPORTANT: also make all decode vals 0 like rs_data, rt_data, is_store, etc)
+         2. Somehow make sure D doesn't take from F. That entails either set the WE's in D to 0,
+            or 'loop' D's PC and INSN back into itself 
+         3. Make F_pc repeat its same output value [need to think about how this would work
+            because we don't want to 'lose' a PC update from W, just delay it i guess] 
+   
+   - branch prediction + stalls
+      - Need to implement:
+         1. How to tell that a branch was mistakenly taken
+         2. Override the mistaken branches w/ NOPs (should just be 2, i think in D and X, but could be wrong)
+         3. Set the _stall wires to 2
+*/
 
+
+/* Possible sources of error
+   - We initialize D_stall to 0, so that D_read_new will start out as 0 and then it will correctly read the next PC/insn from F
+        but the problem is, technically the stall at D at start SHOULD be 2 as per the instructions
+        not sure how to fix this while keeping the whole "turn off WE in D_PC and D_insn if stalling" thing
+        Might just want to go back to my original idea of looping the D stuff back into itself if there is a stall.
+   - On a related note, we set F_stall to 2 and never change it. Does this make sense? Probably will want to assign it to something
+   based on branch misprediction
 */
 
 
@@ -61,6 +76,24 @@ module lc4_processor
    assign led_data = switch_data;
 
 
+   //STALL LOGIC
+
+   //Load-To-Use Stalling
+   wire ldr_stall;
+   assign ldr_stall = (X_is_load && ( (D_rs_re && D_rs_sel == X_rd_sel) || (D_rt_re && D_rt_sel == X_rd_sel) || D_is_branch) );
+
+   wire [1:0] F_stall, D_stall, X_stall, M_stall, W_stall;
+   assign F_stall = 2'b0;
+   // X_is_load && (X_rd_sel == D_rs_sel || X_rd_sel == D_rt_sel || D_is_branch) ? 2'b11 : 2'b00;
+   // For the next section: create stall registers so that you carry dstall into writeback and set test_stall=wstall
+   Nbit_reg #(2, 0) dstall (.in(F_stall), .out(D_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(2, 2'd2) xstall (.in(ldr_stall ? 2'b11 : D_stall), .out(X_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+      //note that X_stall is forced to 3 if there is a load-to-use stall. Otherwise, it gets its val from D_stall, since 
+      //D_stall would be non-0 only in the event of a branch misprediction stall
+   Nbit_reg #(2, 2'd2) mstall (.in(X_stall), .out(M_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(2, 2'd2) wstall (.in(M_stall), .out(W_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   
+
    //  ----****************************************---
    //  ----************--- F stage ----************---
    //  ----****************************************---
@@ -77,19 +110,13 @@ module lc4_processor
    //  ----************--- D stage ----************---
    //  ----****************************************---
 
-   wire [15:0] D_insn, D_pc;
-
-   // wire [15:0] new_or_old_insn, new_or_old_pc; //loop back onto yourself if there is a stall
-   // assign new_or_old_insn = i_cur_insn;
-   // //(stall == 0) ? i_cur_insn :  D_insn;
-   // assign new_or_old_pc = (stall == 0) ? F_pc :
-   //                      D_pc; 
 
    wire D_read_new;
-   assign D_read_new = (stall == 0);
+   assign D_read_new = (D_stall == 0);
       //this is for write enable for the regs below. If there is no stall, WE=1 so get next INSN/PC from F.
          //if there IS a stall, WE=0, so just 'keep' what you have now.                     
    
+   wire [15:0] D_insn, D_pc;
    Nbit_reg #(16) D_insn_reg (.in(i_cur_insn), .out(D_insn), .clk(clk), .we(D_read_new), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) D_pc_reg (.in(F_pc), .out(D_pc), .clk(clk), .we(D_read_new), .gwe(gwe), .rst(rst));
 
@@ -97,7 +124,7 @@ module lc4_processor
    assign o_cur_pc = F_pc; 
 
    wire [2:0] D_rs_sel, D_rt_sel, D_rd_sel;
-   wire D_r1re, D_r2re, D_regfile_we, D_nzp_we, D_select_pc_plus_one, D_is_load, D_is_store, D_is_branch, D_is_control_insn;
+   wire D_rs_re, D_rt_re, D_regfile_we, D_nzp_we, D_select_pc_plus_one, D_is_load, D_is_store, D_is_branch, D_is_control_insn;
    
    // wire [15:0] insn_or_NOP;
    // assign insn_or_NOP = (stall == 0) ? D_insn :
@@ -105,9 +132,9 @@ module lc4_processor
 
    lc4_decoder D_decoder(.insn(D_insn),               // instruction (in D stage)
                        .r1sel(D_rs_sel),              // rs
-                       .r1re(D_r1re),               // does this instruction read from rs?
+                       .r1re(D_rs_re),               // does this instruction read from rs?
                        .r2sel(D_rt_sel),              // rt
-                       .r2re(D_r2re),               // does this instruction read from rt?
+                       .r2re(D_rt_re),               // does this instruction read from rt?
                        .wsel(D_rd_sel),               // rd
                        .regfile_we(D_regfile_we),         // does this instruction write to rd?
                        .nzp_we(D_nzp_we),             // does this instruction write the NZP bits?
@@ -319,21 +346,6 @@ module lc4_processor
    assign should_branch = W_is_branch && ( |nzp_and_insn_11_9 ); 
       //'should_branch' is true when is_branch is active AND at least one bit matches between the insn[11:9] and NZP bits
 
-
-
-   //STALL LOGIC
-
-   //question to think about: on the slides, there is a connection from M to should_stall. Is this real and if so when?
-   // also, do we need to ensure that the thing after LDR is in X when LDR is in W?
-   wire [1:0] F_stall, D_stall, X_stall, M_stall, W_stall;
-   assign F_stall = 2'b0;
-   // X_is_load && (X_rd_sel == D_rs_sel || X_rd_sel == D_rt_sel || D_is_branch) ? 2'b11 : 2'b00;
-   // For the next section: create stall registers so that you carry dstall into writeback and set test_stall=wstall
-   Nbit_reg #(2, 2'd2) dstall (.in(F_stall), .out(D_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-   Nbit_reg #(2, 2'd2) xstall (.in(D_stall), .out(X_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-   Nbit_reg #(2, 2'd2) mstall (.in(X_stall), .out(M_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-   Nbit_reg #(2, 2'd2) wstall (.in(M_stall), .out(W_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-   
    
    
    
@@ -354,7 +366,7 @@ module lc4_processor
                            16'b0;               // Testbench: value read/writen from/to memory
    
    //***TODO***
-   assign test_stall = (W_insn == 16'b0) ? 2'b10 : 2'b0; 
+   assign test_stall = (W_insn == 16'b0) ? 2'b10 : 2'b0;
    // W_stall;        
 
 
