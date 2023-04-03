@@ -88,42 +88,42 @@ module lc4_regfile_ss #(parameter n = 16)
 
    wire [n-1:0] r0_output, r1_output, r2_output, r3_output, r4_output, r5_output, r6_output, r7_output;
 
-   Nbit_reg #(.n(16)) r0
+   Nbit_reg #(.n(n)) r0
       (.in(r0_input), .out(r0_output),
       .clk(clk), .we(r0_we), .gwe(gwe), .rst(rst));
    
-   Nbit_reg #(.n(16)) r1
+   Nbit_reg #(.n(n)) r1
       (.in(r1_input), .out(r1_output),
       .clk(clk), .we(r1_we), .gwe(gwe), .rst(rst));
 
-   Nbit_reg #(.n(16)) r2
+   Nbit_reg #(.n(n)) r2
       (.in(r2_input), .out(r2_output),
       .clk(clk), .we(r2_we), .gwe(gwe), .rst(rst));
 
-   Nbit_reg #(.n(16)) r3
+   Nbit_reg #(.n(n)) r3
       (.in(r3_input), .out(r3_output),
       .clk(clk), .we(r3_we), .gwe(gwe), .rst(rst));
 
-   Nbit_reg #(.n(16)) r4
+   Nbit_reg #(.n(n)) r4
       (.in(r4_input), .out(r4_output),
       .clk(clk), .we(r4_we), .gwe(gwe), .rst(rst));
 
-   Nbit_reg #(.n(16)) r5
+   Nbit_reg #(.n(n)) r5
       (.in(r5_input), .out(r5_output),
       .clk(clk), .we(r5_we), .gwe(gwe), .rst(rst));
 
-   Nbit_reg #(.n(16)) r6
+   Nbit_reg #(.n(n)) r6
       (.in(r6_input), .out(r6_output),
       .clk(clk), .we(r6_we), .gwe(gwe), .rst(rst));
 
-   Nbit_reg #(.n(16)) r7
+   Nbit_reg #(.n(n)) r7
       (.in(r7_input), .out(r7_output),
       .clk(clk), .we(r7_we), .gwe(gwe), .rst(rst));
 
    
    assign o_rs_data_A = 
-      (i_rs_A == 3'b001) ? (r0_we ? r0_input : r0_output) :
-      (i_rs_A == 3'b000) ? (r1_we ? r1_input : r1_output) :
+      (i_rs_A == 3'b000) ? (r0_we ? r0_input : r0_output) :
+      (i_rs_A == 3'b001) ? (r1_we ? r1_input : r1_output) :
       (i_rs_A == 3'b010) ? (r2_we ? r2_input : r2_output) :
       (i_rs_A == 3'b011) ? (r3_we ? r3_input : r3_output) :
       (i_rs_A == 3'b100) ? (r4_we ? r4_input : r4_output) :
@@ -132,8 +132,8 @@ module lc4_regfile_ss #(parameter n = 16)
                            (r7_we ? r7_input : r7_output);
 
    assign o_rt_data_A = 
-      (i_rt_B == 3'b001) ? (r0_we ? r0_input : r0_output) :
-      (i_rt_B == 3'b000) ? (r1_we ? r1_input : r1_output) :
+      (i_rt_B == 3'b000) ? (r0_we ? r0_input : r0_output) :
+      (i_rt_B == 3'b001) ? (r1_we ? r1_input : r1_output) :
       (i_rt_B == 3'b010) ? (r2_we ? r2_input : r2_output) :
       (i_rt_B == 3'b011) ? (r3_we ? r3_input : r3_output) :
       (i_rt_B == 3'b100) ? (r4_we ? r4_input : r4_output) :
@@ -142,8 +142,8 @@ module lc4_regfile_ss #(parameter n = 16)
                            (r7_we ? r7_input : r7_output);
 
    assign o_rs_data_B = 
-      (i_rs_B == 3'b001) ? (r0_we ? r0_input : r0_output) :
-      (i_rs_B == 3'b000) ? (r1_we ? r1_input : r1_output) :
+      (i_rs_B == 3'b000) ? (r0_we ? r0_input : r0_output) :
+      (i_rs_B == 3'b001) ? (r1_we ? r1_input : r1_output) :
       (i_rs_B == 3'b010) ? (r2_we ? r2_input : r2_output) :
       (i_rs_B == 3'b011) ? (r3_we ? r3_input : r3_output) :
       (i_rs_B == 3'b100) ? (r4_we ? r4_input : r4_output) :
@@ -152,8 +152,8 @@ module lc4_regfile_ss #(parameter n = 16)
                            (r7_we ? r7_input : r7_output);
 
    assign o_rt_data_B = 
-      (i_rt_B == 3'b001) ? (r0_we ? r0_input : r0_output) :
-      (i_rt_B == 3'b000) ? (r1_we ? r1_input : r1_output) :
+      (i_rt_B == 3'b000) ? (r0_we ? r0_input : r0_output) :
+      (i_rt_B == 3'b001) ? (r1_we ? r1_input : r1_output) :
       (i_rt_B == 3'b010) ? (r2_we ? r2_input : r2_output) :
       (i_rt_B == 3'b011) ? (r3_we ? r3_input : r3_output) :
       (i_rt_B == 3'b100) ? (r4_we ? r4_input : r4_output) :
