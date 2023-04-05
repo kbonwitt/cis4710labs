@@ -45,28 +45,36 @@ module lc4_regfile_ss #(parameter n = 16)
    // otherwise we set to A as default (EVEN IF A doesn't want to/cant write here)
    wire [n-1:0] r0_input = 
                   (i_rd_we_B && i_rd_B == 3'b000) ? i_wdata_B :
-                  i_wdata_A;
+                  (i_rd_we_A && i_rd_A == 3'b000) ? i_wdata_A :
+                  0;
    wire [n-1:0] r1_input = 
                   (i_rd_we_B && i_rd_B == 3'b001) ? i_wdata_B :
-                  i_wdata_A;
+                  (i_rd_we_A && i_rd_A == 3'b001) ? i_wdata_A :
+                  0;
    wire [n-1:0] r2_input = 
                   (i_rd_we_B && i_rd_B == 3'b010) ? i_wdata_B :
-                  i_wdata_A;
+                  (i_rd_we_A && i_rd_A == 3'b010) ? i_wdata_A :
+                  0;
    wire [n-1:0] r3_input = 
                   (i_rd_we_B && i_rd_B == 3'b011) ? i_wdata_B :
-                  i_wdata_A;
+                  (i_rd_we_A && i_rd_A == 3'b011) ? i_wdata_A :
+                  0;
    wire [n-1:0] r4_input = 
                   (i_rd_we_B && i_rd_B == 3'b100) ? i_wdata_B :
-                  i_wdata_A;
+                  (i_rd_we_A && i_rd_A == 3'b100) ? i_wdata_A :
+                  0;
    wire [n-1:0] r5_input = 
                   (i_rd_we_B && i_rd_B == 3'b101) ? i_wdata_B :
-                  i_wdata_A;
+                  (i_rd_we_A && i_rd_A == 3'b101) ? i_wdata_A :
+                  0;
    wire [n-1:0] r6_input = 
                   (i_rd_we_B && i_rd_B == 3'b110) ? i_wdata_B :
-                  i_wdata_A;
+                  (i_rd_we_A && i_rd_A == 3'b110) ? i_wdata_A :
+                  0;
    wire [n-1:0] r7_input = 
                   (i_rd_we_B && i_rd_B == 3'b111) ? i_wdata_B :
-                  i_wdata_A;
+                  (i_rd_we_A && i_rd_A == 3'b111) ? i_wdata_A :
+                  0;
 
    wire r0_we = 
             (i_rd_A == 3'b000 && i_rd_we_A) || (i_rd_B == 3'b000 && i_rd_we_B);
@@ -132,13 +140,13 @@ module lc4_regfile_ss #(parameter n = 16)
                            (r7_we ? r7_input : r7_output);
 
    assign o_rt_data_A = 
-      (i_rt_B == 3'b000) ? (r0_we ? r0_input : r0_output) :
-      (i_rt_B == 3'b001) ? (r1_we ? r1_input : r1_output) :
-      (i_rt_B == 3'b010) ? (r2_we ? r2_input : r2_output) :
-      (i_rt_B == 3'b011) ? (r3_we ? r3_input : r3_output) :
-      (i_rt_B == 3'b100) ? (r4_we ? r4_input : r4_output) :
-      (i_rt_B == 3'b101) ? (r5_we ? r5_input : r5_output) :
-      (i_rt_B == 3'b110) ? (r6_we ? r6_input : r6_output) :
+      (i_rt_A == 3'b000) ? (r0_we ? r0_input : r0_output) :
+      (i_rt_A == 3'b001) ? (r1_we ? r1_input : r1_output) :
+      (i_rt_A == 3'b010) ? (r2_we ? r2_input : r2_output) :
+      (i_rt_A == 3'b011) ? (r3_we ? r3_input : r3_output) :
+      (i_rt_A == 3'b100) ? (r4_we ? r4_input : r4_output) :
+      (i_rt_A == 3'b101) ? (r5_we ? r5_input : r5_output) :
+      (i_rt_A == 3'b110) ? (r6_we ? r6_input : r6_output) :
                            (r7_we ? r7_input : r7_output);
 
    assign o_rs_data_B = 
@@ -163,7 +171,6 @@ module lc4_regfile_ss #(parameter n = 16)
 
 
 endmodule
-
 
 
 
