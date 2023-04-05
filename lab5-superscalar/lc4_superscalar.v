@@ -65,6 +65,20 @@ module lc4_processor(input wire         clk,             // main clock
    */
 
 
+
+   //TODO: still left i think
+      /*
+      -figure out the inputs to each stall of both A and B. Pretty confused
+      -All bypasses!
+         - WM: WB to MA, WA to MA, WB to MB, WA to MB (don't forget that B has precedence)
+         - MX: MB to XA, MA to XA, MB to XB, MA to XB (don't forget that B has precedence)
+         - WX: WB to XA, WA to XA, WB to XB, WA to XB (don't forget that B has precedence)
+      -hard-code things that arent in part A of the lab, like flushes and NZP
+      -nzp updates (B gets precedence)
+      
+
+      */
+
    //TODO:  TODO: I have written the detections of these cases, but not the effects (the dashes '-')
       /*
       In D will need to consider the following dependency cases:
@@ -138,24 +152,41 @@ module lc4_processor(input wire         clk,             // main clock
    wire pipe_switch;
    assign pipe_switch = D_super_dependency || ldr_stall_B || D_both_memory;
 
-   //TODO:
-      wire X_branch_misprediction, flush; 
-      assign X_branch_misprediction = (|(nzp_reg_output & X_insn[11:9])) && X_is_branch; //==1 when we SHOULD have branched from this BR
-      assign flush = (X_is_control_insn || X_branch_misprediction);
+   //TODO: make a flush_a and flush_b, and they can be locked in at 0 for part A of the lab (b/c no branches or control insns)
+      wire X_branch_misprediction, flush_A, flush_B; 
+      assign flush_A = 0;
+      assign flush_B = 0;
+      // assign X_branch_misprediction = (|(nzp_reg_output & X_insn[11:9])) && X_is_branch; //==1 when we SHOULD have branched from this BR
+      // assign flush = (X_is_control_insn || X_branch_misprediction);
 
-      wire [1:0] F_stall, D_stall, X_stall, M_stall, W_stall;   
-      //Nbit_reg #(2, 0) fstall_reg (.in(flush ? 2'b10 : 2'b0), .out(F_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-      assign F_stall = flush ? 2'b10 : 2'b0;
-      Nbit_reg #(2, 2'b10) dstall_reg (.in(F_stall), .out(D_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-      Nbit_reg #(2, 2'b10) xstall_reg (.in(ldr_stall ? 2'b11 : flush ? 2'b10 : D_stall), .out(X_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+
+      //THIS WAS FOR LAB4 PIPELINE
+         // wire [1:0] F_stall, D_stall, X_stall, M_stall, W_stall;   
+         // //Nbit_reg #(2, 0) fstall_reg (.in(flush ? 2'b10 : 2'b0), .out(F_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+         // assign F_stall = flush ? 2'b10 : 2'b0;
+         // Nbit_reg #(2, 2'b10) dstall_reg (.in(F_stall), .out(D_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+         // Nbit_reg #(2, 2'b10) xstall_reg (.in(ldr_stall ? 2'b11 : flush ? 2'b10 : D_stall), .out(X_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+         //    //note that X_stall is forced to 3 if there is a load-to-use stall. Otherwise, it gets its val from D_stall, since 
+         //    //D_stall would be non-0 only in the event of a branch misprediction stall
+         // Nbit_reg #(2, 2'b10) mstall_reg (.in(X_stall), .out(M_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+         // Nbit_reg #(2, 2'b10) wstall_reg (.in(M_stall), .out(W_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+
+
+   //TODO: started this for supserscalar but still a little confused about where to put each stall. Definitely go back to this and see stalling rules above
+      wire [1:0] F_stall_A, F_stall_B, D_stall_A, D_stall_B, X_stall_A, X_stall_B, M_stall_A, M_stall_B, W_stall_A, W_stall_B;
+      assign F_stall_A = flush_A || flush_B ? 2'b10 : 2'b0;
+      assign F_stall_B = flush_A || flush_B ? 2'b10 : 2'b0;
+      Nbit_reg #(2, 2'b10) dstall_reg_A (.in(ldr_stall_A ? 2'b11 : F_stall_A), .out(D_stall_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+      Nbit_reg #(2, 2'b10) dstall_reg_B (.in(ldr_stall_A ? 2'b01 : ldr_stall_B ? 2'b11 : F_stall_B), .out(D_stall_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+      Nbit_reg #(2, 2'b10) xstall_reg_A (.in(ldr_stall ? 2'b11 : flush_A ? 2'b10 : D_stall_A), .out(X_stall_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+      Nbit_reg #(2, 2'b10) xstall_reg_B (.in(ldr_stall ? 2'b11 : flush_A || flush_B ? 2'b10 : D_stall_B), .out(X_stall_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
          //note that X_stall is forced to 3 if there is a load-to-use stall. Otherwise, it gets its val from D_stall, since 
          //D_stall would be non-0 only in the event of a branch misprediction stall
-      Nbit_reg #(2, 2'b10) mstall_reg (.in(X_stall), .out(M_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-      Nbit_reg #(2, 2'b10) wstall_reg (.in(M_stall), .out(W_stall), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-   
-   /*
-   
-   */
+      Nbit_reg #(2, 2'b10) mstall_reg_A (.in(X_stall_A), .out(M_stall_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+      Nbit_reg #(2, 2'b10) mstall_reg_B (.in(X_stall_B), .out(M_stall_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+      Nbit_reg #(2, 2'b10) wstall_reg_A (.in(M_stall_A), .out(W_stall_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+      Nbit_reg #(2, 2'b10) wstall_reg_B (.in(M_stall_B), .out(W_stall_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst)); 
+
    
    //  ----****************************************---
    //  ----************--- F stage ----************---
@@ -167,19 +198,22 @@ module lc4_processor(input wire         clk,             // main clock
    wire [15:0]   next_pc; // Next program counter (you compute this and feed it into next_pc)
       //note: this will come into play with branch prediction and stalling/flushing
 
-   Nbit_reg #(16, 16'h8200) F_pc_reg_A (.in(next_pc), .out(F_pc_A), .clk(clk), .we(!ldr_stall_A), .gwe(gwe), .rst(rst));
+   Nbit_reg #(16, 16'h8200) F_pc_reg_A (.in(next_pc), .out(F_pc_A), .clk(clk), .we(!ldr_stall_A && !ldr_stall_B), .gwe(gwe), .rst(rst));
    assign o_cur_pc = F_pc_A; 
 
    //---here we would get inputs from the outer PC module
    //so we get i_cur_insn_A, i_cur_insn_B
 
    wire [15:0] F_pc_B;
-   cla16 get_F_pc_B 
+   cla16 make_pc_plus_one_A 
       (.a(F_pc_A), .b(16'b1), .cin(1'b0), .sum(F_pc_B));
+   
+   wire [15:0] F_pc_plus_one_A; //this is effectively the PC of F_B, as it is +1 from the PC in F_A
+   assign F_pc_plus_one_A = F_pc_B;
 
-   wire [15:0] F_pc_plus_one_B; //B because we want the insn AFTER B, not A (B legit IS the insn after A --> A+1)
-   cla16 make_pc_plus_one 
-      (.a(F_pc), .b(16'b1), .cin(1'b0), .sum(F_pc_plus_one_B));
+   wire [15:0] F_pc_plus_one_B; //this is effectively the PC of F_A + 2 = F_B + 1, so the next insn after F_B, selected when no pipe switch
+   cla16 make_pc_plus_one_B 
+      (.a(F_pc_B), .b(16'b1), .cin(1'b0), .sum(F_pc_plus_one_B));
 
 
    
@@ -194,9 +228,9 @@ module lc4_processor(input wire         clk,             // main clock
    Nbit_reg #(16) D_pc_plus_one_reg_A (.in(pipe_switch ? D_pc_plus_one_B ? F_pc_plus_one_A), .out(D_pc_plus_one_A), .clk(clk), .we(!ldr_stall_A), .gwe(gwe), .rst(rst || flush_A || flush_B));
 
    wire [15:0] D_insn_B, D_pc_B, D_pc_plus_one_B;
-   Nbit_reg #(16) D_insn_reg_B (.in(pipe_switch ? i_cur_insn_A : i_cur_insn_B), .out(D_insn_B), .clk(clk), .we(!ldr_stall_B), .gwe(gwe), .rst(rst || flush_A || flush_B));
-   Nbit_reg #(16) D_pc_reg_B (.in(pipe_switch ? F_pc_A : F_pc_B), .out(D_pc_B), .clk(clk), .we(!ldr_stall_B), .gwe(gwe), .rst(rst || flush_A || flush_B));
-   Nbit_reg #(16) D_pc_plus_one_reg_B (.in(pipe_switch ? D_pc_plus_one_A : F_pc_plus_one_B), .out(D_pc_plus_one_B), .clk(clk), .we(!ldr_stall_B), .gwe(gwe), .rst(rst || flush_A || flush_B));
+   Nbit_reg #(16) D_insn_reg_B (.in(pipe_switch ? i_cur_insn_A : i_cur_insn_B), .out(D_insn_B), .clk(clk), .we(!ldr_stall_A && !ldr_stall_B), .gwe(gwe), .rst(rst || flush_A || flush_B));
+   Nbit_reg #(16) D_pc_reg_B (.in(pipe_switch ? F_pc_A : F_pc_B), .out(D_pc_B), .clk(clk), .we(!ldr_stall_A && !ldr_stall_B), .gwe(gwe), .rst(rst || flush_A || flush_B));
+   Nbit_reg #(16) D_pc_plus_one_reg_B (.in(pipe_switch ? D_pc_plus_one_A : F_pc_plus_one_B), .out(D_pc_plus_one_B), .clk(clk), .we(!ldr_stall_A && !ldr_stall_B), .gwe(gwe), .rst(rst || flush_A || flush_B));
 
 
    wire [2:0] D_rs_sel_A, D_rt_sel_A, D_rd_sel_A;
@@ -352,6 +386,10 @@ module lc4_processor(input wire         clk,             // main clock
    //  ----****************************************---
    //  ----************--- M stage ----************---
    //  ----****************************************---
+
+   //TODO: there is a new MM bypass, will need to implement:
+      //which forwards data from the M stage of pipe A to the M stage of pipe B. 
+      //This is used when you have for example an ADD to register x followed directly by a STR of register x (for the data only, not the address!).
    
    //pipe A
    wire [15:0] M_alu_output_A, M_rt_data_A, M_insn_A, M_pc_A, M_pc_plus_one_A;
@@ -468,6 +506,7 @@ module lc4_processor(input wire         clk,             // main clock
    wire [2:0] W_rd_sel_A;
    Nbit_reg #(3) W_rd_sel_reg_A (.in(M_rd_sel_A), .out(W_rd_sel_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
+   wire W_regfile_we_A, W_nzp_we_A, W_select_pc_plus_one_A, W_dmem_we_A;
    Nbit_reg #(1) W_regfile_we_reg_A (.in(M_regfile_we_A), .out(W_regfile_we_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(1) W_nzp_we_reg_A (.in(M_nzp_we_A), .out(W_nzp_we_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(1) W_sel_pc_plus_one_reg_A (.in(M_select_pc_plus_one_A), .out(W_select_pc_plus_one_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
@@ -503,6 +542,7 @@ module lc4_processor(input wire         clk,             // main clock
    wire [2:0] W_rd_sel_B;
    Nbit_reg #(3) W_rd_sel_reg_B (.in(M_rd_sel_B), .out(W_rd_sel_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
+   wire W_regfile_we_B, W_nzp_we_B, W_select_pc_plus_one_B, W_dmem_we_B;
    Nbit_reg #(1) W_regfile_we_reg_B (.in(M_regfile_we_B), .out(W_regfile_we_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(1) W_nzp_we_reg_B (.in(M_nzp_we_B), .out(W_nzp_we_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(1) W_sel_pc_plus_one_reg_B (.in(M_select_pc_plus_one_B), .out(W_select_pc_plus_one_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
@@ -536,8 +576,8 @@ module lc4_processor(input wire         clk,             // main clock
 
    //TODO: fix this when you figure out how flushing works for superscalar, specifically `flush` and `X_alu_output`. Might need to consider case where
    // there is a branch in both pipes of X and both mispredicted (require a flush). In that case, prioritize A
-      assign next_pc = flush ? X_alu_output:
-                            pc_incremented;
+   assign next_pc = flush_A ? X_alu_output_A : flush_B ? X_alu_output_B :
+                     pc_incremented;
    
    
    
