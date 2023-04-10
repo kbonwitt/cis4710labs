@@ -69,12 +69,7 @@ module lc4_processor(input wire         clk,             // main clock
    //TODO: still left i think
       /*
       -figure out the inputs to each stall of both A and B. Pretty confused
-      -All bypasses!
-         - WM: WB to MA, WA to MA, WB to MB, WA to MB (don't forget that B has precedence)
-         - MX: MB to XA, MA to XA, MB to XB, MA to XB (don't forget that B has precedence)
-         - WX: WB to XA, WA to XA, WB to XB, WA to XB (don't forget that B has precedence)
-      -hard-code things that arent in part A of the lab, like flushes and NZP
-      -nzp updates (B gets precedence)
+      -nzp updates (B gets precedence) **need to figure out how to update NZP
       
 
       */
@@ -153,9 +148,11 @@ module lc4_processor(input wire         clk,             // main clock
    assign pipe_switch = D_super_dependency || ldr_stall_B || D_both_memory;
 
    //TODO: make a flush_a and flush_b, and they can be locked in at 0 for part A of the lab (b/c no branches or control insns)
-      wire X_branch_misprediction, flush_A, flush_B; 
+      wire X_branch_misprediction_A, X_branch_misprediction_B, flush_A, flush_B; 
       assign flush_A = 0;
       assign flush_B = 0;
+      assign X_branch_misprediction_A = 0;
+      assign X_branch_misprediction_B = 0;
       // assign X_branch_misprediction = (|(nzp_reg_output & X_insn[11:9])) && X_is_branch; //==1 when we SHOULD have branched from this BR
       // assign flush = (X_is_control_insn || X_branch_misprediction);
 
@@ -176,16 +173,17 @@ module lc4_processor(input wire         clk,             // main clock
       wire [1:0] F_stall_A, F_stall_B, D_stall_A, D_stall_B, X_stall_A, X_stall_B, M_stall_A, M_stall_B, W_stall_A, W_stall_B;
       assign F_stall_A = flush_A || flush_B ? 2'b10 : 2'b0;
       assign F_stall_B = flush_A || flush_B ? 2'b10 : 2'b0;
-      Nbit_reg #(2, 2'b10) dstall_reg_A (.in(ldr_stall_A ? 2'b11 : F_stall_A), .out(D_stall_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-      Nbit_reg #(2, 2'b10) dstall_reg_B (.in(ldr_stall_A ? 2'b01 : ldr_stall_B ? 2'b11 : F_stall_B), .out(D_stall_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-      Nbit_reg #(2, 2'b10) xstall_reg_A (.in(ldr_stall ? 2'b11 : flush_A ? 2'b10 : D_stall_A), .out(X_stall_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-      Nbit_reg #(2, 2'b10) xstall_reg_B (.in(ldr_stall ? 2'b11 : flush_A || flush_B ? 2'b10 : D_stall_B), .out(X_stall_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+      Nbit_reg #(2, 2'b10) dstall_reg_A (.in(D_super_dependency || D_both_memory ? 2'b01 : ldr_stall_A ? 2'b11 : ldr_stall_B ? 2'b11 : F_stall_A), .out(D_stall_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+      Nbit_reg #(2, 2'b10) dstall_reg_B (.in(ldr_stall_A ? 2'b01 : F_stall_B), .out(D_stall_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+      Nbit_reg #(2, 2'b10) xstall_reg_A (.in(D_stall_A), .out(X_stall_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+      Nbit_reg #(2, 2'b10) xstall_reg_B (.in(D_stall_B), .out(X_stall_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
          //note that X_stall is forced to 3 if there is a load-to-use stall. Otherwise, it gets its val from D_stall, since 
          //D_stall would be non-0 only in the event of a branch misprediction stall
       Nbit_reg #(2, 2'b10) mstall_reg_A (.in(X_stall_A), .out(M_stall_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
       Nbit_reg #(2, 2'b10) mstall_reg_B (.in(X_stall_B), .out(M_stall_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
       Nbit_reg #(2, 2'b10) wstall_reg_A (.in(M_stall_A), .out(W_stall_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
       Nbit_reg #(2, 2'b10) wstall_reg_B (.in(M_stall_B), .out(W_stall_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst)); 
+      
 
    
    //  ----****************************************---
@@ -325,39 +323,47 @@ module lc4_processor(input wire         clk,             // main clock
 
    //pipe B
    wire [15:0] X_rs_data_B, X_rt_data_B, X_insn_B, X_pc_B, X_pc_plus_one_B;
-   Nbit_reg #(16) X_rs_data_reg_B (.in(D_rs_data_B), .out(X_rs_data_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_B || ldr_stall_B || ldr_stall_A));
-   Nbit_reg #(16) X_rt_data_reg_B (.in(D_rt_data_B), .out(X_rt_data_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_B || ldr_stall_B || ldr_stall_A));
-   Nbit_reg #(16) X_insn_reg_B (.in(D_insn_B), .out(X_insn_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_B || ldr_stall_B || ldr_stall_A)); //will be NOP when stalling
-   Nbit_reg #(16) X_pc_reg_B (.in(D_pc_B), .out(X_pc_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_B || ldr_stall_B || ldr_stall_A));       //will be 000 when stalling
-   Nbit_reg #(16) X_pc_plus_one_reg_B (.in(D_pc_plus_one_B), .out(X_pc_plus_one_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_B || ldr_stall_B || ldr_stall_A));
+   Nbit_reg #(16) X_rs_data_reg_B (.in(D_rs_data_B), .out(X_rs_data_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_A || flush_B || ldr_stall_B || ldr_stall_A));
+   Nbit_reg #(16) X_rt_data_reg_B (.in(D_rt_data_B), .out(X_rt_data_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_A || flush_B || ldr_stall_B || ldr_stall_A));
+   Nbit_reg #(16) X_insn_reg_B (.in(D_insn_B), .out(X_insn_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_A || flush_B || ldr_stall_B || ldr_stall_A)); //will be NOP when stalling
+   Nbit_reg #(16) X_pc_reg_B (.in(D_pc_B), .out(X_pc_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_A || flush_B || ldr_stall_B || ldr_stall_A));       //will be 000 when stalling
+   Nbit_reg #(16) X_pc_plus_one_reg_B (.in(D_pc_plus_one_B), .out(X_pc_plus_one_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_A || flush_B || ldr_stall_B || ldr_stall_A));
 
    wire [2:0] X_rs_sel_B, X_rt_sel_B, X_rd_sel_B;
-   Nbit_reg #(3) X_rs_sel_reg_B (.in(D_rs_sel_B), .out(X_rs_sel_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_B || ldr_stall_B || ldr_stall_A));
-   Nbit_reg #(3) X_rt_sel_reg_B (.in(D_rt_sel_B), .out(X_rt_sel_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_B || ldr_stall_B || ldr_stall_A));
-   Nbit_reg #(3) X_rd_sel_reg_B (.in(D_rd_sel_B), .out(X_rd_sel_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_B || ldr_stall_B || ldr_stall_A));
+   Nbit_reg #(3) X_rs_sel_reg_B (.in(D_rs_sel_B), .out(X_rs_sel_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_A || flush_B || ldr_stall_B || ldr_stall_A));
+   Nbit_reg #(3) X_rt_sel_reg_B (.in(D_rt_sel_B), .out(X_rt_sel_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_A || flush_B || ldr_stall_B || ldr_stall_A));
+   Nbit_reg #(3) X_rd_sel_reg_B (.in(D_rd_sel_B), .out(X_rd_sel_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_A || flush_B || ldr_stall_B || ldr_stall_A));
 
    wire X_regfile_we_B, X_nzp_we_B, X_select_pc_plus_one_B;
-   Nbit_reg #(1) X_regfile_we_reg_B (.in(D_regfile_we_B), .out(X_regfile_we_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_B || ldr_stall_B || ldr_stall_A));
-   Nbit_reg #(1) X_nzp_we_reg_B (.in(D_nzp_we_B), .out(X_nzp_we_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_B || ldr_stall_B || ldr_stall_A));
-   Nbit_reg #(1) X_sel_pc_plus_one_reg_B (.in(D_select_pc_plus_one_B), .out(X_select_pc_plus_one_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_B || ldr_stall_B || ldr_stall_A));
+   Nbit_reg #(1) X_regfile_we_reg_B (.in(D_regfile_we_B), .out(X_regfile_we_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_A || flush_B || ldr_stall_B || ldr_stall_A));
+   Nbit_reg #(1) X_nzp_we_reg_B (.in(D_nzp_we_B), .out(X_nzp_we_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_A || flush_B || ldr_stall_B || ldr_stall_A));
+   Nbit_reg #(1) X_sel_pc_plus_one_reg_B (.in(D_select_pc_plus_one_B), .out(X_select_pc_plus_one_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_A || flush_B || ldr_stall_B || ldr_stall_A));
    
    wire X_is_load_B, X_is_branch_B, X_is_store_B, X_is_control_insn_B;
-   Nbit_reg #(1) X_is_load_reg_B (.in(D_is_load_B), .out(X_is_load_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_B || ldr_stall_B || ldr_stall_A));
-   Nbit_reg #(1) X_is_store_reg_B (.in(D_is_store_B), .out(X_is_store_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_B || ldr_stall_B || ldr_stall_A));
-   Nbit_reg #(1) X_is_branch_reg_B (.in(D_is_branch_B), .out(X_is_branch_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_B || ldr_stall_B || ldr_stall_A));
-   Nbit_reg #(1) X_is_control_insn_reg_B (.in(D_is_control_insn_B), .out(X_is_control_insn_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_B || ldr_stall_B || ldr_stall_A));
+   Nbit_reg #(1) X_is_load_reg_B (.in(D_is_load_B), .out(X_is_load_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_A || flush_B || ldr_stall_B || ldr_stall_A));
+   Nbit_reg #(1) X_is_store_reg_B (.in(D_is_store_B), .out(X_is_store_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_A || flush_B || ldr_stall_B || ldr_stall_A));
+   Nbit_reg #(1) X_is_branch_reg_B (.in(D_is_branch_B), .out(X_is_branch_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_A || flush_B || ldr_stall_B || ldr_stall_A));
+   Nbit_reg #(1) X_is_control_insn_reg_B (.in(D_is_control_insn_B), .out(X_is_control_insn_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst || flush_A || flush_B || ldr_stall_B || ldr_stall_A));
 
 
    
    // ---- ALU stuff -----
    wire [15:0] X_rs_bypass_val_mux1_A, X_rt_bypass_val_mux2_A, X_alu_output_A;
    assign X_rs_bypass_val_mux1_A = 
-         (X_rs_sel_A == M_rd_sel_A & M_regfile_we_A) ? M_alu_output_A : // MX Bypass
-         (X_rs_sel_A == W_rd_sel_A & W_regfile_we_A)? W_memory_or_alu_output_A : // WX Bypass
+         (X_rs_sel_A == M_rd_sel_A & M_regfile_we_A) ? M_alu_output_A : // MA -> XA Bypass
+         (X_rs_sel_A == M_rd_sel_B & M_regfile_we_B) ? M_alu_output_B : // MB -> XA Bypass
+
+         (X_rs_sel_A == W_rd_sel_A & W_regfile_we_A)? W_memory_or_alu_output_A : // WA -> XA Bypass
+         (X_rs_sel_A == W_rd_sel_B & W_regfile_we_B)? W_memory_or_alu_output_B : // WB -> XA Bypass
+
          X_rs_data_A;
    assign X_rt_bypass_val_mux2_A = 
-         (X_rt_sel_A == M_rd_sel_A & M_regfile_we_A) ? M_alu_output_A : // MX Bypass
-         (X_rt_sel_A == W_rd_sel_A & W_regfile_we_A) ? W_memory_or_alu_output_A : // WX Bypass
+         (X_rt_sel_A == M_rd_sel_A & M_regfile_we_A) ? M_alu_output_A : // MA -> XA Bypass
+         (X_rt_sel_A == M_rd_sel_B & M_regfile_we_B) ? M_alu_output_B : // MB -> XA Bypass
+
+         (X_rt_sel_A == W_rd_sel_A & W_regfile_we_A)? W_memory_or_alu_output_A : // WA -> XA Bypass
+         (X_rt_sel_A == W_rd_sel_B & W_regfile_we_B)? W_memory_or_alu_output_B : // WB -> XA Bypass
+
          X_rt_data_A;
    lc4_alu alu_A 
       (.i_insn(X_insn_A), .i_pc(X_pc_A),
@@ -368,18 +374,69 @@ module lc4_processor(input wire         clk,             // main clock
 
    wire [15:0] X_rs_bypass_val_mux1_B, X_rt_bypass_val_mux2_B, X_alu_output_B;
    assign X_rs_bypass_val_mux1_B = 
-         (X_rs_sel_B == M_rd_sel_B & M_regfile_we_B) ? M_alu_output_B : // MX Bypass
-         (X_rs_sel_B == W_rd_sel_B & W_regfile_we_B)? W_memory_or_alu_output_B : // WX Bypass
+         (X_rs_sel_B == M_rd_sel_B & M_regfile_we_B) ? M_alu_output_B : // MB -> XA Bypass
+         (X_rs_sel_B == M_rd_sel_A & M_regfile_we_A) ? M_alu_output_A : // MA -> XA Bypass
+
+         (X_rs_sel_B == W_rd_sel_B & W_regfile_we_B)? W_memory_or_alu_output_B : // WB -> XA Bypass
+         (X_rs_sel_B == W_rd_sel_A & W_regfile_we_A)? W_memory_or_alu_output_A : // WA -> XA Bypass
+
          X_rs_data_B;
    assign X_rt_bypass_val_mux2_B = 
-         (X_rt_sel_B == M_rd_sel & M_regfile_we_B) ? M_alu_output_B : // MX Bypass
-         (X_rt_sel_B == W_rd_sel & W_regfile_we_B) ? W_memory_or_alu_output_B : // WX Bypass
+         (X_rt_sel_B == M_rd_sel_B & M_regfile_we_B) ? M_alu_output_B : // MB -> XB Bypass
+         (X_rt_sel_B == M_rd_sel_A & M_regfile_we_A) ? M_alu_output_A : // MA -> XB Bypass
+         
+         (X_rt_sel_B == W_rd_sel_B & W_regfile_we_B)? W_memory_or_alu_output_B : // WB -> XB Bypass
+         (X_rt_sel_B == W_rd_sel_A & W_regfile_we_A)? W_memory_or_alu_output_A : // WA -> XB Bypass
+
          X_rt_data_B;
    lc4_alu alu_B 
       (.i_insn(X_insn_B), .i_pc(X_pc_B),
       .i_r1data(X_rs_bypass_val_mux1_B), .i_r2data(X_rt_bypass_val_mux2_B),
       .o_result(X_alu_output_B)
       );
+
+   
+   //prioritize B, and if not then try A
+   // ----  NZP stuff ------
+   wire [2:0] X_nzp_newbits_A;
+   wire X_writes_to_r7_A = (X_insn_A[15:12] == 4'b1111 || //TRAP
+                        X_insn_A[15:12] == 4'b0100 || //JSR/JSRR
+                        X_insn_A[15:12] == 4'b1000); //RTI //TODO: maybe remove this? RTI doesn't write to R7... :(
+   wire [15:0] X_nzp_wdata_A = 
+                     (X_writes_to_r7_A) ? X_pc_plus_one_A :
+                     X_alu_output_A;
+   
+   assign X_nzp_newbits_A = (X_nzp_wdata_A == 0) ? 3'b010 : //Z
+                        (X_nzp_wdata_A[15] == 0) ? 3'b001 : //P
+                        3'b100; //N
+
+   wire [2:0] X_nzp_newbits_B;
+   wire X_writes_to_r7_B = (X_insn_B[15:12] == 4'b1111 || //TRAP
+                        X_insn_B[15:12] == 4'b0100 || //JSR/JSRR
+                        X_insn_B[15:12] == 4'b1000); //RTI //TODO: maybe remove this? RTI doesn't write to R7... :(
+   wire [15:0] X_nzp_wdata_B = 
+                     (X_writes_to_r7_B) ? X_pc_plus_one_B :
+                     X_alu_output_B;
+   
+   assign X_nzp_newbits_B = (X_nzp_wdata_B == 0) ? 3'b010 : //Z
+                        (X_nzp_wdata_B[15] == 0) ? 3'b001 : //P
+                        3'b100; //N
+
+   wire [2:0] X_nzp_newbits_choose;
+   assign X_nzp_newbits_choose = X_nzp_we_B ? X_nzp_newbits_B :
+                                 X_nzp_we_A ? X_nzp_newbits_A :
+                                 3'b000;
+   wire X_nzp_we_choose;
+   assign X_nzp_we_choose = X_nzp_we_B || X_nzp_we_A;
+
+   wire [2:0] nzp_reg_output;
+   Nbit_reg #(3) nzp_reg 
+      (.in(X_nzp_newbits_choose), .out(nzp_reg_output),
+      .clk(clk), .we(X_nzp_we_choose), .gwe(gwe), .rst(rst));
+      
+       
+
+   //----MEMORY STUFF-----   
    
    
 
@@ -387,9 +444,10 @@ module lc4_processor(input wire         clk,             // main clock
    //  ----************--- M stage ----************---
    //  ----****************************************---
 
-   //TODO: there is a new MM bypass, will need to implement:
-      //which forwards data from the M stage of pipe A to the M stage of pipe B. 
-      //This is used when you have for example an ADD to register x followed directly by a STR of register x (for the data only, not the address!).
+   //TODO: ***FOR LAB PART B***:
+      //there is a new MM bypass, will need to implement:
+         //which forwards data from the M stage of pipe A to the M stage of pipe B. 
+         //This is used when you have for example an ADD to register x followed directly by a STR of register x (for the data only, not the address!).
    
    //pipe A
    wire [15:0] M_alu_output_A, M_rt_data_A, M_insn_A, M_pc_A, M_pc_plus_one_A;
@@ -447,39 +505,36 @@ module lc4_processor(input wire         clk,             // main clock
    Nbit_reg #(1) M_is_control_insn_reg_B (.in(X_is_control_insn_B), .out(M_is_control_insn_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
 
+   //bypasses
+   wire [15:0] M_dmem_data_bypass_mux3_A;
+   assign M_dmem_data_bypass_mux3_A = 
+               (M_is_store_A && (M_rt_sel_A == W_rd_sel_B) && W_regfile_we_B) ? W_memory_or_alu_output_B : //WB -> MA bypass
+               (M_is_store_A && (M_rt_sel_A == W_rd_sel_A) && W_regfile_we_A) ? W_memory_or_alu_output_A : //WA -> MA bypass
+               M_rt_data_A;
 
-   //TODO: prioritize B, and if not then try A
-      // ----  NZP stuff ------
-      wire [2:0] X_nzp_newbits, nzp_reg_output;
-      wire X_writes_to_r7 = (X_insn[15:12] == 4'b1111 || //TRAP
-                           X_insn[15:12] == 4'b0100 || //JSR/JSRR
-                           X_insn[15:12] == 4'b1000); //RTI
-      wire [15:0] X_nzp_wdata = 
-                        (X_writes_to_r7) ? X_pc_plus_one :
-                        X_alu_output;
-      assign X_nzp_newbits = (X_nzp_wdata == 0) ? 3'b010 : //Z
-                           (X_nzp_wdata[15] == 0) ? 3'b001 : //P
-                           3'b100; //N
+   wire [15:0] M_memory_or_alu_output_A, M_regfile_data_to_write_A;
+   assign M_memory_or_alu_output_A = M_is_load_A ? i_cur_dmem_data :
+                                             M_alu_output_A;   
+   assign M_regfile_data_to_write_A = M_select_pc_plus_one_A ? M_pc_plus_one_A :
+                                    M_memory_or_alu_output_A;
 
-      Nbit_reg #(3) nzp_reg 
-         (.in(X_nzp_newbits), .out(nzp_reg_output),
-         .clk(clk), .we(X_nzp_we), .gwe(gwe), .rst(rst));
-   
+   wire [15:0] M_dmem_data_bypass_mux3_B;
+   assign M_dmem_data_bypass_mux3_B = 
+               (M_is_store_B && (M_rt_sel_B == W_rd_sel_B) && W_regfile_we_B) ? W_memory_or_alu_output_B : //WB -> MB bypass
+               (M_is_store_B && (M_rt_sel_B == W_rd_sel_A) && W_regfile_we_A) ? W_memory_or_alu_output_A : //WA -> MB bypass
+               M_rt_data_B;
 
-   //TODO:
-      // ---- MEMORY stuff -----  
-      wire [15:0] M_dmem_data_bypass_mux3;
-      assign M_dmem_data_bypass_mux3 = (M_is_store && (M_rt_sel == W_rd_sel) && W_regfile_we) ? W_memory_or_alu_output :
-                                       M_rt_data;
-      assign o_dmem_we = M_is_store;
-      assign o_dmem_addr = (M_is_load || M_is_store) ? M_alu_output : 16'b0;
-      assign o_dmem_towrite = (M_is_store) ? M_dmem_data_bypass_mux3 : 16'b0;
+   wire [15:0] M_memory_or_alu_output_B, M_regfile_data_to_write_B;
+   assign M_memory_or_alu_output_B = M_is_load_B ? i_cur_dmem_data :
+                                             M_alu_output_B;   
+   assign M_regfile_data_to_write_AB= M_select_pc_plus_one_B ? M_pc_plus_one_B :
+                                    M_memory_or_alu_output_B;
 
-      wire [15:0] M_memory_or_alu_output, M_regfile_data_to_write;
-      assign M_memory_or_alu_output = M_is_load ? i_cur_dmem_data :
-                                                M_alu_output;   
-      assign M_regfile_data_to_write = M_select_pc_plus_one ? M_pc_plus_one :
-                                       M_memory_or_alu_output;
+
+    //TODO: ***FOR LAB PART B***:
+      assign o_dmem_we = 1'b0 //M_is_store;
+      assign o_dmem_addr = 16'b0 //(M_is_load || M_is_store) ? M_alu_output : 16'b0;
+      assign o_dmem_towrite = 16'b0 //(M_is_store) ? M_dmem_data_bypass_mux3 : 16'b0;
 
 
 
@@ -561,21 +616,26 @@ module lc4_processor(input wire         clk,             // main clock
    Nbit_reg #(16) W_regfile_data_reg_B (.in(M_regfile_data_to_write_B), .out(W_regfile_data_to_write_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
 
-   //TODO: figureout what newbits should look like for the dif pipes
-         wire [2:0] W_nzp_newbits;
-         wire W_regfile_we, W_nzp_we, W_select_pc_plus_one, W_dmem_we;
-         wire [2:0] M_nzp_newbits_load = (i_cur_dmem_data == 0) ? 3'b010 : //Z
-                              (i_cur_dmem_data[15] == 0) ? 3'b001 : //P
-                              3'b100;
-         Nbit_reg #(3) W_nzp_newbits_reg (.in(M_is_load ? M_nzp_newbits_load : M_nzp_newbits), .out(W_nzp_newbits), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   //TODO: TODO: TODO: TODO: figureout what newbits should look like for the dif pipes [//TODO: FOR LAB part B]
+   //    - I think we prioritize B's newbits, but also think about how to check if B is NOP and if so, then do A's newbits
+      wire [2:0] M_nzp_newbits_load = (i_cur_dmem_data == 0) ? 3'b010 : //Z
+                           (i_cur_dmem_data[15] == 0) ? 3'b001 : //P
+                           3'b100;
+      
+      wire [2:0] W_nzp_newbits_A;
+      Nbit_reg #(3) W_nzp_newbits_reg (.in(M_is_load_A ? M_nzp_newbits_load : M_nzp_newbits_A), .out(W_nzp_newbits_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+
+      wire [2:0] W_nzp_newbits_B;
+      Nbit_reg #(3) W_nzp_newbits_reg (.in(M_is_load_B ? M_nzp_newbits_load : M_nzp_newbits_B), .out(W_nzp_newbits_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
 
+   
+
+   //if pipe switch, just want pc+1. otherwise want the normal pc+2
    wire [15:0] pc_incremented;
    assign pc_incremented = pipe_switch ? F_pc_plus_one_A : //that is, pc+1
                                          F_pc_plus_one_B;  //that is, pc+2
 
-   //TODO: fix this when you figure out how flushing works for superscalar, specifically `flush` and `X_alu_output`. Might need to consider case where
-   // there is a branch in both pipes of X and both mispredicted (require a flush). In that case, prioritize A
    assign next_pc = flush_A ? X_alu_output_A : flush_B ? X_alu_output_B :
                      pc_incremented;
    
