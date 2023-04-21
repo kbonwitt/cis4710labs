@@ -347,7 +347,8 @@ module lc4_processor
    wire [2:0] M_nzp_newbits_load = (i_cur_dmem_data == 0) ? 3'b010 : //Z
                           (i_cur_dmem_data[15] == 0) ? 3'b001 : //P
                           3'b100;
-   Nbit_reg #(3) W_nzp_newbits_reg (.in(M_is_load ? M_nzp_newbits_load : M_nzp_newbits), .out(W_nzp_newbits), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   wire [2:0] M_nzp_newbits_choose = M_is_load ? M_nzp_newbits_load : M_nzp_newbits;
+   Nbit_reg #(3) W_nzp_newbits_reg (.in(M_nzp_newbits_choose), .out(W_nzp_newbits), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
    Nbit_reg #(1) W_regfile_we_reg (.in(M_regfile_we), .out(W_regfile_we), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(1) W_nzp_we_reg (.in(M_nzp_we), .out(W_nzp_we), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
